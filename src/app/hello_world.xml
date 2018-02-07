@@ -1,0 +1,704 @@
+<import path="<%= root_path %>.lib1.lib1" once="1"/>
+<import path="<%= root_path %>.lib2.lib2" once="1"/>
+<dynamic vars="{lst()}" gridcnt="1" savedtablename="" load_table="" dumppath="pg.kroger.reports.config.user_views"
+         filtercnt="1" config_table="" title="" groupby="{pkg('g1';{lst()})}" filter_col="{pkg('f1';'')}"
+         filter_val="{pkg(;)}" store_col="{pkg('s1' 's2' 's3' 's4' 's5' 's6' 's7';'cust_banner' '' '' '' '' '' '')}"
+         store_val="{pkg('s1' 's2' 's3' 's4' 's5' 's6' 's7';{lst('Kroger Coordinated')} {lst()} {lst()} {lst()} {lst()} {lst()} {lst()})}"
+         fact="{pkg(;)}" fact_sel="sales" fact_list="{lst()}" derived="{pkg(;)}" uninit="1" latest_date="" pg_sel="0"
+         cal="ad" submitvar="0" tab="" left_nest_tab="" reportcheck="" rhs_ts="0" lhs_ts="0" left_width="550"
+         fgcolor_list="" dropfilter_var="0" dropgrid_outside_var="0" export_submit="0"
+         tactic_selector="{pkg('name' 'label';{lst('tactic_total')} {lst('Total')})}" exclude="{lst('Rpt','RptCHECK')}"
+         warning="0" logout="0" right_splitter_width="" filter_list="m6" groupby_list1="m6">
+<render browsertitle_="1010dashboard"
+        favicon_="https://seeklogo.com/images/K/Kroger_s_Food_Store-logo-4662C08B16-seeklogo.com.png"/>
+<ignore>
+<insert block="test_init_do"/> </ignore>
+<do on_="init">
+    <expand block="result_conditionals_init"/>
+    <expand block="bind_to_init"/>
+    <expand block="app_widget"/>
+</do>
+<note>DO should happen all the time any variable changes. Submit button sets to zero and thus triggers RHS
+    re-expansion
+</note>
+<do>
+    <set submithold="1"/>
+</do>
+<insert block="latest_date_do"/>
+<insert block="report_check_init_do"/>
+<do onchange_="title">
+    <for i="1" to_="{@gridcnt}">
+        <setv name="groupby{@i}" value="{@groupby.g{@i}}"/>
+    </for>
+</do>
+<do onsubmit_="resultnest">
+    <set submitvar="{@submitvar+1}"/>
+    <set submithold="0"/>
+    <foreach col="{@fact_list}" tally_="i">
+        <if test="{@i=1}">
+            <then>
+                <set fgcolor_list="fgcolor_{@col}"/>
+            </then>
+            <else>
+                <set fgcolor_list="{@fgcolor_list},fgcolor_{@col}"/>
+            </else>
+        </if>
+    </foreach>
+</do>
+<do onsubmit_="addfilter">
+    <expand block="addfilter"/>
+</do>
+<do onchange_="@dropfilter_var">
+    <expand block="dropfilter"/>
+</do>
+<do onsubmit_="addgrid">
+    <expand block="addgrid"/>
+</do>
+<ignore>
+    <do onsubmit_="dropgrid">
+        <expand block="dropgrid"/>
+    </do>
+</ignore>
+<do onchange_="dropgrid_outside_var">
+    <expand block="dropgrid_new"/>
+</do>
+<do onsubmit_="export_nest">
+    <set export_submit="{@export_submit+1}"/>
+</do>
+<do onchange_="@title">
+    <expand block="bind_to_chg"/>
+    <expand block="widget_load_helper"/>
+</do>
+<do onchange_="@groupby">
+    <expand block="groupby_conditional"/>
+    <expand block="result_conditionals"/>
+</do>
+<do onchange_="@derived">
+    <expand block="derived_fact_conditional"/>
+    <expand block="result_conditionals"/>
+</do>
+<do onchange_="@tactic_selector">
+    <expand block="tactics_conditional"/>
+</do>
+<do onchange_="@fact">
+    <expand block="time_period_conditional"/>
+</do>
+<insert block="fact_sel_init_do"/>
+<insert block="report_check_onchange_do"/>
+<insert block="reportcheck_sales_do"/>
+<insert block="store_grouping_do"/>
+<insert block="tactic_do"/>
+<insert block="m6_groupby_warning_do"/>
+<do onchange_="@logout" action_="api" api_="logout"/>
+<do onchange_="@logout">
+    <signal msg="Succesfully Logged Out"/>
+</do>
+<do onchange_="@derived,@fact_sel">
+    <set derived_fact_selected="0"/>
+    <foreach fact="{str_to_lst(@fact_sel;',')}">
+        <if test="{@derived.{@fact}=''}">
+            <then>
+                <setv name="derived_fact_selected" value="{@derived_fact_selected}"/>
+            </then>
+            <else>
+                <setv name="derived_fact_selected" value="{@derived_fact_selected+1}"/>
+            </else>
+        </if>
+    </foreach>
+</do>
+<insert block="fact_sel_onchange_do"/>
+<note>Task insert &quot;menu_widgets&quot;</note>
+<layout arrange_="v" width_="100%" height_="100%" overflow_="hidden">
+    <layout arrange_="h" width_="100%" height_="80" background_="#FBFBFB" name="top_bar_layout">
+        <layout arrange_="h" width_="12%" margin_="-5px 0">
+            <widget name="logo1" class_="image" url_="https://www.kroger.com/asset/582f2cdc84ae6caca6ba1277?data=1"
+                    height_="75"/>
+            <widget name="logo2" class_="image"
+                    url_="http://news.pg.com/sites/pg.newshq.businesswire.com/files/logo/file/PGPhaseLogo.png"
+                    height_="75"/>
+        </layout>
+        <layout width_="8%" halign_="center" arrange_="v">
+            <widget class_="text" text_="1010" style_="font-size:24px;font-weight:bold;font-family:trebuchet ms;"
+                    color_="#0068B3" padding_="10px 0px 0px 0"/>
+            <widget class_="text" text_="Dashboard" style_="font-size:24px;font-weight:bold;font-family:trebuchet ms;"
+                    color_="#0068B3" padding_="0px 0px 10px 0"/>
+        </layout>
+        <layout width_="65%" arrange_="h">
+            <insert block="selections_in_effect"/>
+        </layout>
+        <layout halign_="right" arrange_="h" width_="15%">
+            <widget class_="link" type_="external" text_="<i class='fa fa-question-circle fa-lg'></i>"
+                    style_="border:0;color:#0068B3;font-size:20px;background-color:#FBFBFB"
+                    url_="https://pgone-my.sharepoint.com/:o:/r/personal/redman_j_pg_com/_layouts/15/WopiFrame.aspx?sourcedoc=%7Bc213e605-1c61-417d-a86e-8de05e58203d%7D"
+                    tooltip_="OneNote" margin_="18px 10"/>
+            <widget class_="button" type_="submit" submit_="export_nest"
+                    text_="<i class='fa fa-file-excel-o fa-lg'></i>"
+                    textstyle_="border:0;color:#0068B3;font-size:20px;background-color:#FBFBFB"
+                    tooltip_="Export to Excel" margin_="10px 0"/>
+            <widget class_="button" type_="set" value_="@logout" newvalue_="{if(@logout=0;1;0)}"
+                    text_="<i class='fa fa-sign-out fa-lg'></i>" margin_="10px 0"
+                    textstyle_="border:0;color:#0068B3;font-size:20px;background-color:#FBFBFB" tooltip_="Log Out"/>
+        </layout>
+    </layout>
+    <layout height_="5" width_="100%" background_="#0068B3">
+        <widget class_="empty"/>
+    </layout>
+    <layout arrange_="h" type_="splitter" width_="99.5%" height_="99.5%" background_="#FBFBFB">
+        <note>Left Hand Side</note>
+        <layout name="left_splitter" arrangement_="v" halign_="center" width_="50%" widthvalue_="@left_width"
+                flexible_="0" overflow_="auto">
+            <note>TASK (completed): Include openvalue_=&quot;tab&quot; and make sure that opening and closing tabs does
+                not refresh resultnest
+            </note>
+            <layout type_="collapsible" openvalue_="tab" halign_="left" width_="100%">
+                <note>Browser below leads to the folder indicated by variable @dumppath. Selecting a table and hitting
+                    the Load (config) button will instantiate the variable state saved in that table (by the dump button
+                    below)
+                </note>
+                <note>Patch 3 note - made formatting chnages to LHS widgets/layouts</note>
+                <layout label_="(Optional) Load a saved report">
+                    <layout arrange_="h">
+                        <widget name="browserwidget" accept_="table" class_="browser" dropheight_="250" filter_="table"
+                                dropwidth_="350" labelwidth_="130" path_="{@dumppath}" show_="title" update_="auto"
+                                value_="@load_table" showtimestamp_="1" sortby_="time" sortdir_="down"/>
+                        <widget name="config" class_="button" invmode_="hide" disabled_="{@load_table = ''}"
+                                type_="config" update_="auto" text_="Load Report" value_="config_table" halign_="right">
+                            <if test="{@load_table<>''}">
+                                <then>
+                                    <base table="{@load_table}"/>
+                                    <colord hide="qaid_"/>
+                                </then>
+                            </if>
+                        </widget>
+                    </layout>
+                </layout>
+                <layout label_="Create a new report - product options" arrange_="v" overflow_="hidden" halign_="center"
+                        width_="100%" style_="font-size:14px;">
+                    <layout background_="#4d5784" width_="93.5%" margin_="10px 0px 0px 15" padding_="0px 0px 0px 15"
+                            border_="1px 0px   0px 15" halign_="center" arrange_="v">
+                        <layout arrange_="h" halign_="left">
+                            <widget name="number1" app_widget_1="{@app_widget_1}" class_="button" type_="set"
+                                    set_="app_widget_1" value_="@app_widget_1" newvalue_="{if(@app_widget_1=1;0;1)}"
+                                    text_="<span class='fa-stack'>
+                            <span class='fa fa-circle-o fa-stack-2x'></span>
+                            <strong class='fa-stack-1x'>1</strong>
+                        </span>
+                        " textstyle_="border:0;box-shadow:none;color:#FFFFFF;font-size:14px;background-color:#4d5784"
+                        color_="#4d5784" require_="{@filtercnt>={@i}}" invmode_="hide" margin_="0px 0px 0px -18"/>
+                        <widget class_="text" text_="(Optional) Select product filters to narrow the universe of data"
+                                style_="font-size:14px;color:#FFFFFF" halign_="left" margin_="5px 0px 0px -2"/>
+                    </layout>
+                    <layout arrange_="h" halign_="left" app_widget_1="{@app_widget_1}" showvalue_="@app_widget_1">
+                        <widget class_="text" text_="MasterMinder Segmentation Status" color_="#FFFFFF" halign_="left"/>
+                        <widget name="exclude_picker" class_="checklist" listvalue_="@exclude" textcolor_="#FFFFFF"
+                                orientation_="h" margin_="0px 10px 0px 10" itemspacing_="8px">
+                            <table>Rpt,Report;RptCHECK,Report Check;NoRpt,NoRpt
+                            </table>
+                        </widget>
+                    </layout>
+                    <layout arrange_="v" halign_="left" app_widget_1="{@app_widget_1}" showvalue_="@app_widget_1">
+                        <widget class_="text" text_="Product Filters:" style_="color:#FFFFFF" halign_="left"/>
+                        <widget name="no_filters_text" class_="text" text_="No Filters Selected"
+                                require_="{@filtercnt=0}" invmode_="hide"/>
+                        <layout halign_="left" arrange_="h">
+                            <widget name="product_filter_list_picker" class_="radio" value_="@filter_list"
+                                    textcolor_="#FFFFFF" orientation_="h" halign_="center" margin_="0px 0">
+                                <table>m6,M6 Segmentation;key,MM Key;secondary,MM Secondary
+                                </table>
+                            </widget>
+                        </layout>
+                        <for filter="1" to_="10" tally_="i">
+                            <layout arrange_="h" halign_="left">
+                                <widget name="dropdown_filter_cols_{@i}" class_="dropdown" value_="filter_col.f{@i}"
+                                        require_="{@filtercnt>={@i}}" invmode_="hide" filter_list="{@filter_list}">
+                                    <switch on="{@filter_list}">
+                                        <case when="m6">
+                                            <insert block="m6_segmentation_grid"/>
+                                        </case>
+                                        <case when="key">
+                                            <insert block="key_attributes_grid"/>
+                                            <columns/>
+                                            <colord cols="name,label"/>
+                                        </case>
+                                        <case when="secondary">
+                                            <insert block="secondary_attributes_grid"/>
+                                        </case>
+                                    </switch>
+                                </widget>
+                                <widget name="is_text{@i}" class_="text" text_="is" color_="#FFFFFF"
+                                        require_="{@filtercnt>={@i}}" invmode_="hide"/>
+                                <ignore> <widget class_="text" text_="v:{@filter_col_{@i}._or_empty=na} {@filter_col_{@i}._defined} {@filter_col.f{@i}._defined}" refreshon_="1"/> </ignore>
+                                <widget name="dd_filter_val_{@i}" class_="dropdownlist" listvalue_="filter_val.f{@i}"
+                                        i="{@i}" require_="{@filtercnt>={@i}}" invmode_="hide"
+                                        disabled_="{{@filter_col.f{@i}._defined} & {@filter_col.f{@i}=''}}"
+                                        maxrows_="2000">
+                                    <expand block="key_attributes_grid"/>
+                                    <note>Including filter block to only select relevant values</note>
+                                    <note>TASK: filter_block probably needs to be fixed to not be recursive. calling
+                                        block on a widget that will partially define the block...
+                                        <insert block="filter_block"/>
+                                    </note>
+
+                                    <if test="{@filter_col.f{@i}._defined}">
+                                        <then>
+                                            <if test="{@filter_col.f{@i}<>''}">
+                                                <then>
+                                                    <tabu breaks="{@filter_col.f{@i}}"/>
+                                                    <sort col="{@filter_col.f{@i}}" dir="up"/>
+                                                </then>
+                                                <else>
+                                                    <sel value="i_()=0"/>
+                                                </else>
+                                            </if>
+                                        </then>
+                                        <else>
+                                            <sel value="i_()=0"/>
+                                        </else>
+                                    </if>
+                                    <note>TASK: Need to fix what's going on here... removing a filter then adding it
+                                        back leads to an error because the variable is already defined but then you have
+                                        a tabu with empty breaks and no tcol which throws an error. I think this should
+                                        be fixed at the require_ attribute. Unignore the text widget and play around
+                                        with that. Also this if test below...
+                                    </note>
+                                </widget>
+                                <widget name="dropfilter{@i}" class_="button" type_="set" set_="dropfilter_var"
+                                        value_="@dropfilter_var" newvalue_="{@i}"
+                                        text_="<i class='fa fa-minus-circle fa-lg'></i>"
+                                        textstyle_="border:0;box-shadow:none;color:#0068B3;font-size:14px;background-color:white"
+                                        tooltip_="Drop Filter" require_="{@filtercnt>={@i}}" invmode_="hide"/>
+                            </layout>
+                        </for>
+                        <widget class_="button" type_="submit" submit_="addfilter" text_="Add Filter" width_="95%"
+                                tooltip_="Add Filter"/>
+                    </layout>
+                </layout>
+                <layout background_="#4d5784" width_="93.5%" margin_="10px 0px 10px 15" padding_="0px 0px 0px 15"
+                        border_="1px 0px 0px 15" halign_="center" arrange_="v">
+                    <layout arrange_="h" halign_="left">
+                        <widget name="number2" app_widget_1="{@app_widget_2}" class_="button" type_="set"
+                                set_="app_widget_2" value_="@app_widget_2" newvalue_="{if(@app_widget_2=1;0;1)}"
+                                text_="<span class='fa-stack'>
+                        <span class='fa fa-circle-o fa-stack-2x'></span>
+                        <strong class='fa-stack-1x'>2</strong>
+                    </span>
+                    " textstyle_="border:0;box-shadow:none;color:#FFFFFF;font-size:14px;background-color:#4d5784"
+                    color_="#4d5784" require_="{@filtercnt>={@i}}" invmode_="hide" margin_="0px 0px 0px -18"/>
+                    <widget class_="text" text_="Select product groupings to aggregate by"
+                            style_="font-size:14px;color:#FFFFFF" halign_="left" margin_="5px 0px 0px 0"/>
+                </layout>
+                <layout arrange_="v" halign_="left" app_widget_2="{@app_widget_2}" showvalue_="@app_widget_2">
+                    <widget name="left_nest" class_="nest" bind_="{@bindlist},filtercnt" to_="{@tolist},filtercnt"
+                            refreshon_="1">
+                        <dynamic dropgrid_inside_var="0" left_nest_tab="1">
+                            <layout arrange_="v" halign_="center" background_="#4d5784">
+                                <for i="1" to_="{max(@gridcnt;1)}">
+                                    <layout halign_="left" arrange_="v">
+                                        <widget class_="text" text_="Product Groupings (Grid {@i}):"
+                                                style_="color:#FFFFFF" halign_="left" require_="{@left_nest_tab={@i}}"
+                                                invmode_="hide" margin_="-10px 0px 0px -6"/>
+                                        <widget name="groupby_list_picker_{@i}" class_="radio" value_="groupby_list{@i}"
+                                                textcolor_="#FFFFFF" orientation_="h" halign_="center"
+                                                margin_="0px 0px 0px -6" require_="{@left_nest_tab={@i}}"
+                                                invmode_="hide">
+                                            <table>m6,M6 Segmentation;key,MM Key;secondary,MM Secondary
+                                            </table>
+                                        </widget>
+                                    </layout>
+                                </for>
+                                <layout type_="tabpanel" openvalue_="left_nest_tab" halign_="left" width_="100%"
+                                        margin_="0px 0px 0px 15">
+                                    <for i="1" to_="{max(@gridcnt;1)}">
+                                        <layout arrange_="h" label_="Grid {@i}" halign_="left" background_="#4d5784"
+                                                width_="100%">
+                                            <widget class_="sorter" tolistvalue_="groupby{@i}" border_="0"
+                                                    require_="{@left_nest_tab={@i}}" invmode_="none" i="{@i}">
+                                                <switch on="{@groupby_list{@i}}">
+                                                    <case when="m6">
+                                                        <insert block="m6_segmentation_grid"/>
+                                                    </case>
+                                                    <case when="key">
+                                                        <insert block="key_attributes_grid"/>
+                                                        <columns/>
+                                                        <colord cols="name,label"/>
+                                                    </case>
+                                                    <case when="secondary">
+                                                        <insert block="secondary_attributes_grid"/>
+                                                    </case>
+                                                </switch>
+                                            </widget>
+                                            <widget name="dropgrid{@i}" class_="button" type_="set"
+                                                    value_="@dropgrid_inside_var" newvalue_="{@i}"
+                                                    text_="<i class='fa fa-minus-circle fa-lg'></i>"
+                                                    textstyle_="border:0;box-shadow:none;color:#0068B3;font-size:14px;background-color:white"
+                                                    require_="{@left_nest_tab={@i}}" invmode_="hide"/>
+                                        </layout>
+                                    </for>
+                                </layout>
+                            </layout>
+                        </dynamic>
+                    </widget>
+                    <widget class_="button" type_="submit" width_="95%" text_="Add a Grid" submit_="addgrid"
+                            halign_="center" margin_="-5px 0px 0px 0"/>
+                </layout>
+            </layout>
+        </layout>
+        <note>This left nest lets the tabpanel layout dynamically generate tabs for each grid that will show on the
+            right-hand side
+        </note>
+        <note>TASK: Probably need to add back in tab variable and openvalue_ so that when the nest re-inits we have the
+            same view
+        </note>
+        <note>TASK: Upon changing tab, causes _slight_ hiccup + modal screen. Bad UX. Might be because we're
+            re-expanding on open tab... i.e. left_nest_tab. Is this different than just binding the variable out? I
+            think so?
+        </note>
+        <layout label_="Create a new report - fact and time period options" arrange_="v" overflow_="hidden"
+                halign_="center" width_="100%" style_="font-size:14px;">
+            <layout arrange_="v" halign_="center">
+                <layout background_="#4d5784" width_="93.5%" margin_="10px 0px 0px 15" padding_="0px 0px 0px 15"
+                        border_="1px 0px 0px 15" halign_="center" arrange_="v">
+                    <layout arrange_="h" halign_="left">
+                        <widget name="number3" app_widget_3="{@app_widget_3}" class_="button" type_="set"
+                                set_="app_widget_3" value_="@app_widget_3" newvalue_="{if(@app_widget_3=1;0;1)}"
+                                text_="<span class='fa-stack'>
+                        <span class='fa fa-circle-o fa-stack-2x'></span>
+                        <strong class='fa-stack-1x'>3</strong>
+                    </span>
+                    " textstyle_="border:0;box-shadow:none;color:#FFFFFF;font-size:14px;background-color:#4d5784"
+                    color_="#4d5784" require_="{@filtercnt>={@i}}" invmode_="hide" margin_="0px 0px 0px -18"/>
+                    <widget class_="text" text_="Select Ad Week or Fiscal Week" style_="font-size:14px;color:#FFFFFF"
+                            halign_="left" margin_="5px 0px 0px -2"/>
+                    <widget name="table_picker" class_="radio" value_="@cal" textcolor_="#FFFFFF" orientation_="h"
+                            halign_="center" margin_="5px 0px 0px 45">
+                        <table>ad,Ad;fiscal,Fiscal
+                        </table>
+                    </widget>
+                </layout>
+            </layout>
+            <layout background_="#4d5784" width_="93.5%" arrange_="v" halign_="left" margin_="10px 0px 0px 15"
+                    padding_="0px 0px 0px 15" border_="1px 0px 0px 15">
+                <layout arrange_="h" halign_="left">
+                    <widget name="number4" app_widget_4="{@app_widget_4}" class_="button" type_="set"
+                            set_="app_widget_4" value_="@app_widget_4" newvalue_="{if(@app_widget_4=1;0;1)}"
+                            text_="<span class='fa-stack'>
+                    <span class='fa fa-circle-o fa-stack-2x'></span>
+                    <strong class='fa-stack-1x'>4</strong>
+                </span>
+                " textstyle_="border:0;box-shadow:none;color:#FFFFFF;font-size:14px;background-color:#4d5784"
+                color_="#4d5784" require_="{@filtercnt>={@i}}" invmode_="hide" margin_="0px 0px 0px -18"/>
+                <widget class_="text" text_="Choose facts and time periods" style_="font-size:14px;color:#FFFFFF"
+                        halign_="left" margin_="5px 0px 0px -2"/>
+            </layout>
+            <layout halign_="left" arrange_="v" app_widget_4="{@app_widget_4}" showvalue_="@app_widget_4">
+                <layout halign_="left" arrange_="h">
+                    <widget class_="text" text_="Choose basic facts:" style_="font-size:14px;color:#FFFFFF"
+                            halign_="left"/>
+                    <widget name="fact_sel_checklist" class_="dropdownlist" value_="fact_sel" textstyle_="color:#FFFFFF"
+                            halign_="left" inputwidth_="300" margin_="0px 0px 0px 27.5">
+                        <table>sales,Sales;unitsls,Unit Sales;vol,Volume;giv,GIV;gmd,GM $;gmp,GM %;oos,OOS Events;dp,Display Points;fp,Feature Points;pd,Points of Distribution
+                        </table>
+                        <note>TASK: NEED TO ADD THESE BACK IN  </note>
+                        <sel value="c1<>'oos'"/>
+                    </widget>
+                </layout>
+                <ignore>
+                    <widget class_="text" text_="- - - - -" style_="font-size:10px;color:#FFFFFF" halign_="center"/>
+                </ignore>
+                <widget class_="text" text_="Choose fact calculations:" style_="font-size:14px;color:#FFFFFF"
+                        halign_="left"/>
+                <note>Derived Facts Dropdowns</note>
+                <layout arrange_="v" halign_="left" border_="10x 0px 0px 10" margin_="10x 0px 0px 10"
+                        padding_="10x 0px 0px 10" width_="150">
+                    <foreach basic_fact="sales,unitsls,gmd,gmp,vol,giv,oos,dp,fp,pd"
+                             fact_label="Sales,Unit Sales,GM $,GM %,Volume,GIV,OOS,Display Points,Feature Points,Points of Distribution">
+                        <layout arrange_="h">
+                            <widget class_="text" text_="{padright(@fact_label;22)}" style_="color:#FFFFFF"
+                                    require_="{contains(@fact_sel;@basic_fact)}" invmode_="hide" height_="50"
+                                    width_="150" border_="10x 10px 10px 10" margin_="10x 10px 10px 30"
+                                    padding_="10x 10px 10px 10"/>
+                            <widget name="{@basic_fact}_ddlist" class_="dropdownlist" value_="@derived.{@basic_fact}"
+                                    require_="{contains(@fact_sel;@basic_fact)}" invmode_="hide" style_="color:#FFFFFF"
+                                    inputwidth_="317" margin_="0x -20px 0px 0">
+                                <table depth="8"/>
+                                <willbe name="name"
+                                        value="case(i_();1;'ty';2;'p';3;'iya';4;'cya';5;'tyshare';6;'sharecya';7;'soldon';'soldoniya')"/>
+                                <willbe name="label"
+                                        value="case(i_();1;'Basic Fact';2;'% Chg vs. YA';3;'IYA';4;'CYA';5;'Share of Product';6;'Share of Product CYA';7;'% Sold On';'% Sold on IYA')"/>
+                                <note>TASK: NEED TO ADD THESE BACK IN</note>
+                                <sel value="name<>'soldon' 'soldoniya'"/>
+                            </widget>
+                        </layout>
+                    </foreach>
+                </layout>
+                <widget class_="text" text_="- - - - -" style_="font-size:10px;color:#FFFFFF" halign_="center"/>
+                <widget class_="text" text_="Time Periods for Derived Facts:" style_="font-size:14px;color:#FFFFFF"
+                        halign_="left"/>
+                <note>Nest Widget dynamically generates the checkgrid and passes variables out. Most variable control
+                    should happen outside of the nest
+                </note>
+                <widget name="checklist_nest" class_="nest"
+                        bind_="@fact_sales,@fact_unitsls,@fact_gmd,@fact_gmp,@fact_vol,@fact_giv,@fact_oos,@fact_dp,@fact_fp,@fact_pd,@derived,@uninit,@derived_fact_selected"
+                        to_="@fact.sales,@fact.unitsls,@fact.gmd,@fact.gmp,@fact.vol,@fact.giv,@fact.oos,@fact.dp,@fact.fp,@fact.pd,@derived,@uninit,@derived_fact_selected"
+                        margin_="0px 0px 0px -17" width_="100%" padding_="0" require_="{@derived_fact_selected<>0}"
+                        invmode_="hide">
+                    <dynamic>
+                        <note>Checklist Labels</note>
+                        <layout arrange_="h" overflow_="hidden" background_="#4d5784" margin_="0px 0px 0px 2">
+                            <layout arrange_="v" margin_="35px 10px 0px 0" background_="#4d5784">
+                                <foreach var="{pkg_names(@derived)}"
+                                         fact_label="Sales,Unit Sales,GM $,GM %,Volume,GIV,OOS,Display Pts,Feature Pts,Pts of Distribution"
+                                         tally_="i">
+                                    <foreach val="{@derived.{@var}}" tally_="j">
+                                        <layout arrange_="v" background_="#4d5784">
+                                            <widget name="checklist_label{@i}{@j}1" class_="text" text_="{@fact_label}"
+                                                    style_="font-size:8px;" color_="#FFFFFF" width_="86" height_="10"
+                                                    margin_="-45 px 0px 0px 0"/>
+                                            <widget name="checklist_label{@i}{@j}2" class_="text" text_="{@val}"
+                                                    style_="font-size:8px;" color_="#FFFFFF" height_="10"
+                                                    margin_="-5px 0px 3px 0"/>
+                                        </layout>
+                                    </foreach>
+                                </foreach>
+                            </layout>
+                            <layout arrange_="v" margin_="0px 0px 0px 0" background_="#4d5784">
+                                <note>COMPLETE: This layout of time period labels should only be appearing if a
+                                    checkgrid is actually appearing as well. Could consider moving into foreach below or
+                                    having a similar require condition.
+                                </note>
+                                <if test="{@fact_sel<>''}">
+                                    <layout arrange_="h" background_="#4d5784">
+                                        <foreach
+                                                time_per="PG FYTD,PG QTD,K FYTD,K QTD,K PTD,Last52W,Last26W,Last13W,Last4W,Last1W"
+                                                alt="P&G Fiscal Year To Date,P&G Quarter To Date,Kroger Fiscal Year To Date,Kroger Quarter To Date,Kroger Period To Date,Last 52 Weeks,Last 26 Weeks,Last 13 Weeks,Last 4 Weeks,Last 1 Week">
+                                            <widget class_="text" text_="{@time_per}"
+                                                    style_="font-size:10px;color:#FFFFFF" rotate_="-35" halign_="left"
+                                                    margin_="0px -22px 5px 0" width_="62" tooltip_="{@alt}"
+                                                    require_="{@derived_fact_selected>0}" invmode_="hide"/>
+                                        </foreach>
+                                    </layout>
+                                </if>
+                                <foreach var="{pkg_names(@derived)}"
+                                         fact_label="Sales,Unit Sales,GM $,GM %,Volume,GIV,OOS,Display Points,Feature Points,Points of Distribution"
+                                         tally_="i">
+                                    <foreach val="{@derived.{@var}}" tally_="j">
+                                        <note>TASK A: label value right now is two names. Make it the LABELS, so it's
+                                            formatted all pretty-like. FIX: idk, might have to include the labels in the
+                                            packages somehow. If you do have to include in package, recommend making the
+                                            key name {@var}_label or something like that so you can still iterate
+                                            through var.
+                                        </note>
+                                        <widget class_="checklist" value_="fact_{@var}.{@val}" height_="25"
+                                                margin_="5px -5px 0px 0" padding_="0px 0px 0px 0" var="{@var}"
+                                                val="{@val}" textcolor_="#FFFFFF" background_="#4d5784"
+                                                itemspacing_="10px">
+                                            <table depth="10"/>
+                                            <willbe name="time_per"
+                                                    value="case(i_();1;'{@var}_pgfytd_{@val}';2;'{@var}_pgqtd_{@val}';3;'{@var}_kfytd_{@val}';4;'{@var}_kqtd_{@val}';5;'{@var}_kptd_{@val}';6;'{@var}_last52_{@val}';7;'{@var}_last26_{@val}';8;'{@var}_last13_{@val}';9;'{@var}_last4_{@val}';'{@var}_last1_{@val}')"/>
+                                            <willbe name="empty_label" value="na"/>
+                                        </widget>
+                                    </foreach>
+                                </foreach>
+                            </layout>
+                        </layout>
+                    </dynamic>
+                </widget>
+            </layout>
+        </layout>
+        <layout background_="#4d5784" width_="93.5%" arrange_="v" halign_="left" margin_="10px 0px 10px 15"
+                padding_="0px 0px 0px 15" border_="1px 0px 0px 15">
+            <layout arrange_="h" halign_="left">
+                <widget name="number5" app_widget_5="{@app_widget_5}" class_="button" type_="set" set_="app_widget_5"
+                        value_="@app_widget_5" newvalue_="{if(@app_widget_5=1;0;1)}"
+                        text_="<span class='fa-stack'>
+                <span class='fa fa-circle-o fa-stack-2x'></span>
+                <strong class='fa-stack-1x'>5</strong>
+            </span>
+            " textstyle_="border:0;box-shadow:none;color:#FFFFFF;font-size:14px;background-color:#4d5784"
+            color_="#4d5784" require_="{@filtercnt>={@i}}" invmode_="hide" margin_="0px 0px 0px -18"/>
+            <widget class_="text" text_="(Optional) Add additional columns for promo-specific facts"
+                    style_="font-size:14px;color:#FFFFFF" halign_="left" margin_="5px 0px 0px -2"/>
+        </layout>
+        <layout arrange_="v" background_="#4d5784" halign_="left" app_widget_5="{@app_widget_5}"
+                showvalue_="@app_widget_5">
+            <widget class_="dropdownlist" rowvalue_="tactic_selector" textcolor_="#FFFFFF" refreshon_="1"
+                    tactic_selector="{@tactic_selector}">
+                <insert block="tactic_checklist_table"/>
+            </widget>
+        </layout>
+    </layout>
+</layout>
+</layout>
+<layout label_="Create a new report - store groups options" arrange_="v" overflow_="hidden" halign_="center"
+        width_="100%" style_="font-size:14px;">
+<layout background_="#4d5784" width_="93.5%" margin_="10px 0px 10px 15" padding_="0px 0px 0px 15"
+        border_="1px 0px 0px 15" halign_="center" arrange_="v">
+    <layout arrange_="h" halign_="left">
+        <widget name="number6" app_widget_6="{@app_widget_6}" class_="button" type_="set" set_="app_widget_6"
+                value_="@app_widget_6" newvalue_="{if(@app_widget_6=1;0;1)}"
+                text_="<span class='fa-stack'>
+        <span class='fa fa-circle-o fa-stack-2x'></span>
+        <strong class='fa-stack-1x'>6</strong>
+    </span>
+    " textstyle_="border:0;box-shadow:none;color:#FFFFFF;font-size:14px;background-color:#4d5784" color_="#4d5784"
+    require_="{@filtercnt>={@i}}" invmode_="hide" margin_="0px 0px 0px -18"/>
+    <widget class_="text" text_="Choose each store group to list in the report" style_="font-size:14px;color:#FFFFFF"
+            halign_="left" margin_="5px 0px 0px -2"/>
+</layout>
+<layout arrange_="v" background_="#4d5784" width_="100%" halign_="left" app_widget_6="{@app_widget_6}"
+        showvalue_="@app_widget_6">
+    <note>Patch 3 note - pulled 'Store Column Grouping' out of LHS nest</note>
+    <for i="1" to_="7">
+        <layout arrange_="h" halign_="center">
+            <note>Require: The first one is always present, the following need a value to be selected in the previous
+                dropdown
+            </note>
+            <widget name="dropdown_store_cols_{@i}" class_="dropdown" value_="store_col.s{@i}"
+                    require_="{if(@i=1;1;lst_len(@store_val.s{@i-1})>0)}" invmode_="hide" i="{@i}" inputwidth_="200"
+                    store_col="{@store_col}">
+                <note>Updated to reflect new columns in stores table</note>
+                <base table="pg.kroger.stores"/>
+                <colord cols="assetprotectionrating_cluster,assetprotectiontier_cluster,compidstores_cluster,cust_banner,division_name,growthstores_cluster,reg_ae,reg_team_leader,state_cluster,storetype_cluster"/>
+                <columns/>
+                <willbe name="new_label"
+                        value="if(contains(label;'Cluster');splice('-',dropto(label;'(Cluster)');' ');splice('- ',label;' '))"
+                        fixed="1"/>
+                <note>DONE: Don't let user select the same thing for two store cols</note>
+                <if test="{@i>1}">
+                    <for j="1" to_="{@i-1}">
+                        <sel value="name<>'{@store_col.s{@j}}'"/>
+                    </for>
+                </if>
+                <colord cols="name,new_label"/>
+            </widget>
+            <widget name="store_is_text{@i}" class_="text" text_="is" color_="#FFFFFF"
+                    require_="{if(@i=1;1;lst_len(@store_val.s{@i-1})>0)}" invmode_="hide"/>
+            <widget name="dd_store_val_{@i}" class_="dropdownlist" listvalue_="store_val.s{@i}" i="{@i}"
+                    require_="{if(@i=1;1;lst_len(@store_val.s{@i-1})>0)}" invmode_="hide"
+                    disabled_="{{@store_col.s{@i}._defined} & {@store_col.s{@i}=''}}">
+                <base table="pg.kroger.stores"/>
+                <if test="{@store_col.s{@i}<>''}">
+                    <willbe name="no_apostrophe_{@i}"
+                            value="strsubst(strsubst({@store_col.s{@i}};'\'';0;'');',';0;'')"/>
+                </if>
+                <note>Not including store filter block here because each store column grouping is not a filter, but a
+                    new set of columns
+                </note>
+                <tabu breaks="{if(@store_col.s{@i}<>'';'no_apostrophe_{@i}';'')}">
+                    <break col="{@store_col.s{@i}}" sort="up"/>
+                    <if test="{@store_col.s{@i}=''}">
+                        <tcol fun="cnt"/>
+                    </if>
+                </tabu>
+                <if test="{@store_col.s{@i}<>''}">
+                    <colord cols="no_apostrophe_{@i}"/>
+                </if>
+            </widget>
+        </layout>
+    </for>
+</layout>
+</layout>
+        </layout>
+<layout label_="(Optional) Save a report">
+<layout arrange_="h">
+    <widget name="titlefield" class_="field" value_="@title" type_="auto" color_="lavender" labelwidth_="130"
+            emptytext_="Enter report title"/>
+    <note>Dump button that saves the app's variable state</note>
+    <widget name="dump" class_="button" type_="dump" dumptitle_="{@title}" value_="@savedtablename"
+            text_="Save User View"
+            disabled_="{{@title = ''} | {@groupbys_defined=0} | {@tactics_defined=0} | {@derived_fact_selected=0}}"
+            invmode_="hide" dumppath_="{@dumppath}" dumpmode_="replace" halign_="right"/>
+</layout>
+</layout>
+        </layout>
+<note>Empty widget to try and hack when scrolling toggles (i.e. upon expansion of grid settings)</note>
+<layout height_="105" halign_="left" arrange_="v">
+<layout>
+    <layout arrange_="v" halign_="left" width_="35%">
+        <widget class_="text" text_="To run and/or save this report:"
+                require_="{{@groupbys_defined=0} | {@tactics_defined=0} | {@derived_fact_selected=0}}" invmode_="hide"
+                style_="font-size:10px;font-weight:bold;"/>
+        <widget class_="text" text_="Select Derived Facts" require_="{@derived_fact_selected=0}" invmode_="hide"
+                margin_="-15px 0" style_="font-size:10px;"/>
+        <widget class_="text" text_="Select Time Periods" require_="{@time_period_selected=0}" invmode_="hide"
+                margin_="-15px 0" style_="font-size:10px;"/>
+        <widget class_="text" text_="Select Group-bys" require_="{@groupbys_defined=0}" invmode_="hide"
+                margin_="-15px 0" style_="font-size:10px;"/>
+        <widget class_="text" text_="Select Tactics" require_="{@tactics_defined=0}" invmode_="hide" margin_="-15px 0"
+                style_="font-size:10px;"/>
+    </layout>
+    <layout halign_="center" width_="30%">
+        <widget name="submit_button" class_="button" type_="submit" text_="Run Report" submit_="resultnest,grd*,grid*"
+                disabled_="{{@groupbys_defined=0} | {@tactics_defined=0} | {@derived_fact_selected=0} | {@time_period_selected=0}}"
+                margin_="10px 0"/>
+    </layout>
+</layout>
+<layout width_="100%">
+    <widget class_="progressbar" display_="inline" margin_="10px 0px 0px 80"/>
+</layout>
+<widget name="export_nest" class_="nest" target_="xlsx" update_="manual" invmode_="hide" filename_="download"
+        refresh="{@export_submit}">
+    <dynamic>
+        <render>
+            <xlsx headers_="" margins_="0.25;0.25;0"/>
+        </render>
+        <layout xlsx_sheetname_="User View - Grid 1{if({@gridcnt>1};' - Grid {@gridcnt}';'')}"
+                xlsx_orientation_="landscape" xlsx_scale_="0" xlsx_fitwidth_="1">
+            <layout arrange_="v">
+                <for i="1" to_="{@gridcnt}">
+                    <widget name="grid{@i}" class_="grid" label_="G{@i}: {@groupby.g{@i}}" i="{@i}"
+                            phier="{@groupby.g{@i}}" refresh="{@submitvar}" update_="manual" invmode_="none"
+                            type_="scroll" colhead_="label" total_="0" rowcol_="0" sortable_=""
+                            cellfontfamily_="Trebuchet MS" width_="1400" fillwidth_="0" span_headers_="0"
+                            fgcolorforcol_="{@fgcolor_list}" colstwtfgcolor_="{@fact_list}" bgcolorforrow_="bgcolor">
+                        <insert block="basic_report"/>
+                    </widget>
+                </for>
+            </layout>
+        </layout>
+    </dynamic>
+</widget>
+<layout arrange_="h">
+    <widget name="troubleshoot_rhs" class_="checkbox" value_="@rhs_ts" label_="Troubleshoot RHS?"/>
+    <widget name="troubleshoot_lhs" class_="checkbox" value_="@lhs_ts" label_="Troubleshoot LHS?"/>
+    <widget class_="empty" height_="100"/>
+</layout>
+<layout showvalue_="@lhs_ts">
+    <widget class_="scope"/>
+</layout>
+</layout>
+        </layout>
+<note>Right Hand Side</note>
+<note>TASK: Submit button only correctly submits/re-renders nest on changes that would require a re-expansion</note>
+<note>https://1010data.atlassian.net/browse/DR-939</note>
+<note>TASK: include in the require that the store column groupings be non-blank</note>
+<layout name="right_splitter" collapsible_="0" width_="100%" widthvalue_="@right_splitter_width">
+<widget class_="alert" mode_="notification" type_="warning" position_="center"
+        text_="Please note that including item (m6_upc, m6_description) in your groupby is for TESTING and VALIDATION purposes only. It will break the groupby order of the grids + share metrics. Filter to a narrow product universe before running a query by item."
+        value_="@warning" duration_="10"/>
+<widget name="resultnest" class_="nest"
+        require_="{{@groupbys_defined=1} & {@tactics_defined=1} & {@derived_fact_selected>0}}" invmode_="none"
+        errmsg_="{@result_invmsg}" update_="manual" bind_="{@bindlist}" to_="{@tolist}" refresh="{@submitvar}"
+        width_="{@right_splitter_width}" right_splitter_width="{@right_splitter_width}">
+    <dynamic refresh="{@submitvar}" right_splitter_width="{@right_splitter_width}">
+        <layout arrangement_="v" width_="{@right_splitter_width}">
+            <for i="1" to_="{@gridcnt}">
+                <widget name="grid{@i}" class_="grid" label_="G{@i}: {@groupby.g{@i}}" i="{@i}" phier="{@groupby.g{@i}}"
+                        refresh="{@submitvar}" update_="manual" invmode_="none" type_="scroll" colhead_="label"
+                        total_="0" rowcol_="1" sortable_="" cellfontfamily_="Trebuchet MS"
+                        width_="{@right_splitter_width-30}" height_="500" fillwidth_="0" span_headers_="0"
+                        fgcolorforcol_="{@fgcolor_list}" colstwtfgcolor_="{@fact_list}" bgcolorforrow_="bgcolor">
+                    <insert block="basic_report"/>
+                </widget>
+            </for>
+        </layout>
+    </dynamic>
+</widget>
+<layout showvalue_="@rhs_ts">
+    <widget class_="scope" refreshon_="1"/>
+</layout>
+<widget class_="empty" height_="80"/>
+</layout>
+        </layout>
+        </layout>
+        </dynamic>

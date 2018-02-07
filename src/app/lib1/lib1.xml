@@ -1,0 +1,379 @@
+<library>
+    <note>-------UTILITY BLOCKS-------</note>
+    <block name="dates_loaded_link">
+        <link table2="pg.kroger.datesloaded_{@cal}" col="{@cal}_week_end"/>
+    </block>
+    <block name="calendar_link" date_col="">
+        <link table2="pg.kroger.calendar" col="{@date_col}" col2="{@date_col}">
+            <willbe name="avail" value="{@today_}>{@cal}_week_avail"/>
+            <sel value="avail=1"/>
+            <willbe name="kfy" value="int(first(week_name;4))" label="Kroger Fiscal Year"/>
+            <willbe name="pgfy_flag" value="if(pg_week_number=1;int(last(pg_quarter;4));na)"/>
+            <willbe name="pgfy" value="g_fill(;;;pgfy_flag;-1)" label="PG Fiscal Year" format="type:nocommas"/>
+            <merge/>
+            <note>Kroger To Date Booleans</note>
+            <willbe name="kfytd_ty" value="kfy=g_hi(;;kfy)"/>
+            <willbe name="kfytd_ly" value="ifnull(g_rshift(;;;kfytd_ty;52);0)"/>
+            <willbe name="kqtd_ty" value="quarter=g_last(;;;quarter) & kfytd_ty"/>
+            <willbe name="kqtd_ly" value="ifnull(g_rshift(;;;kqtd_ty;52);0)"/>
+            <willbe name="kper" value="first(period;3)"/>
+            <willbe name="kptd_ty" value="kper=g_last(;;;kper) & kfytd_ty"/>
+            <willbe name="kptd_ly" value="ifnull(g_rshift(;;;kptd_ty;52);0)"/>
+            <note>PG To Date Booleans</note>
+            <willbe name="pgfytd_ty" value="pgfy=g_hi(;;pgfy)"/>
+            <willbe name="pgfytd_ly" value="ifnull(g_rshift(;;;pgfytd_ty;52);0)"/>
+            <willbe name="pgqtd_ty" value="pg_quarter=g_last(;;;pg_quarter) & pgfytd_ty"/>
+            <willbe name="pgqtd_ly" value="ifnull(g_rshift(;;;pgqtd_ty;52);0)"/>
+        </link>
+    </block>
+    <block name="kroger_products_link">
+        <link table2="pg.kroger.products" col="itm_sku_cd" col2="clean_upc" shift="0" type="select">
+            <willbe name="clean_upc" value="string(real(m6_upc))"/>
+            <insert block="filter_block"/>
+        </link>
+    </block>
+    <note>TASK: After we've taken care of data validity concerns... can make this a type=&quot;select&quot; to greatly cut down on query time. Will mean a pre-tabu filter down to the stores universe</note>
+    <block name="kroger_stores_link">
+        <link table2="pg.kroger.stores" col="div_store"/>
+    </block>
+    <block name="pre_tabu_booleans">
+        <willbe name="tactic_total" value="1"/>
+        <willbe name="dsp_ct_pg" value="is_pg*dsp_ct"/>
+        <willbe name="st_ct_pg" value="is_pg*st_ct"/>
+        <note>Can I do fiscal_week div_store level stuff pre-tabu?</note>
+        <foreach mfgr="business,pg">
+            <willbe name="display_points{if(@mfgr='pg';'_pg';'')}" value="g_ucnt({@cal}_week_end div_store;dsp_ct{if(@mfgr='pg';'_pg';'')};itm_sku_cd)"/>
+            <willbe name="feature_points{if(@mfgr='pg';'_pg';'')}" value="g_ucnt({@cal}_week_end div_store;st_ct{if(@mfgr='pg';'_pg';'')};itm_sku_cd)"/>
+            <willbe name="store_week_sales{if(@mfgr='pg';'_pg';'')}" value="g_sum({@cal}_week_end div_store;{if(@mfgr='pg';'is_pg';'')};sales_amt)"/>
+            <willbe name="store_week_unitsls{if(@mfgr='pg';'_pg';'')}" value="g_sum({@cal}_week_end div_store;{if(@mfgr='pg';'is_pg';'')};sales_qty)"/>
+        </foreach>
+        <note>Creating Booleans</note>
+        <note>Don't actually need these booleans</note>
+        <note>Don't know why I put the above comment, but should investigate when I have some time</note>
+        <willbe name="display_sku" value="if(dsp_ct;itm_sku_cd;na)"/>
+        <willbe name="feature_sku" value="if(st_ct;itm_sku_cd;na)"/>
+        <willbe name="pg_display_sku" value="if(dsp_ct & is_pg;itm_sku_cd;na)"/>
+        <willbe name="pg_feature_sku" value="if(st_ct & is_pg;itm_sku_cd;na)"/>
+        <willbe name="corrected_stat_unit_factor" value="if(stat_unit_factor=na;na;real(stat_unit_factor))"/>
+        <willbe name="volume" value="sales_qty*corrected_stat_unit_factor"/>
+        <willbe name="corrected_giv_unit" value="if(giv_unit=na;na;real(giv_unit)*is_pg)"/>
+        <note>Need to create boolean for time_period x display/feature</note>
+        <foreach per="last1,last4,last13,last26,last52,kfytd,kqtd,kptd,pgfytd,pgqtd">
+            <if test="{contains(lst_to_str(@fact_list;',');@per)}">
+                <foreach yr="ty,ly">
+                    <willbe name="dsku_{@per}_{@yr}" value="if(dsp_ct & {@per}_{@yr};itm_sku_cd;na)"/>
+                    <willbe name="fsku_{@per}_{@yr}" value="if(st_ct & {@per}_{@yr};itm_sku_cd;na)"/>
+                </foreach>
+            </if>
+        </foreach>
+        <note>Pre-Tabulation Preparations</note>
+        <foreach per="last1,last4,last13,last26,last52,kfytd,kqtd,kptd,pgfytd,pgqtd" tally="i">
+            <if test="{contains(lst_to_str(@fact_list;',');@per)}">
+                <foreach yr="ty,ly" tally="j">
+                    <foreach tactic="{@tactic_selector.name}">
+                        <note>tactic foreach (marker)</note>
+                        <note>Creating tactic * time period booleans - can only use one boolean in weighted sum for first tabu, and second tabu is using a store-weighted boolean, so this combines time &amp; tactic into one</note>
+                        <willbe name="{@tactic}_{@per}_{@yr}" value="{@tactic}*{@per}_{@yr}"/>
+                        <willbe name="{@tactic}_{@per}_{@yr}_pg" value="{@tactic}*{@per}_{@yr}*is_pg"/>
+                    </foreach>
+                </foreach>
+            </if>
+        </foreach>
+    </block>
+    <note>Should be included inside a link and select in the MM Products table</note>
+    <block name="filter_block">
+        <for i="1" to_="{@filtercnt}">
+            <if test="{{@filter_col.f{@i}._defined} & {@filter_val.f{@i}._defined}}">
+                <then>
+                    <if test="{{@filter_col.f{@i}<>''} & {@filter_val.f{@i}<>''}}">
+                        <then>
+                            <sel value="{@filter_col.f{@i}}={qv(str_to_lst(@filter_val.f{@i};','))}"/>
+                        </then>
+                    </if>
+                </then>
+            </if>
+        </for>
+    </block>
+    <note>-------MAIN QUERY BLOCKS-------</note>
+    <note>Adopted from the KBD query</note>
+    <note>Setup does all the necessary linking, boolean creation, and filtering.</note>
+    <defblock name="setup">
+        <base table="pg.kroger.sales{if(@cal='ad';'_ad';'')}"/>
+        <note>Linking in Dates Loaded booleans and selecting to L104W</note>
+        <insert block="dates_loaded_link"/>
+        <insert block="calendar_link" date_col="{@cal}_week_end"/>
+        <note>L104 should be the longest possible time frame - TEST RESULTS w/ and w/o this selection statement</note>
+        <sel value="last52_ty|last52_ly"/>
+        <note>Was computing yrmo with the yrmo function. Will probably need to use period for kroger or pg_quarter</note>
+        <insert block="kroger_stores_link"/>
+        <note>Product Table Link and Booleans</note>
+        <insert block="kroger_products_link"/>
+        <sel value="exclude_flag={qv(@exclude)}"/>
+        <willbe name="is_pg" value="manufacturer_4='PROCTER & GAMBLE'"/>
+        <note>Tactic PG Booleans</note>
+        <insert block="pre_tabu_booleans"/>
+    </defblock>
+    <defblock name="prep_tabu">
+        <note>thinking of doing 2 tabus, tabu 1 at div_store level for facts that first need to be computed at store level. tabu 2 aggregating OVER  div_store to final hierarchies user selects.
+            QUESTION: Why? Justify 2 tabulations?</note>
+        <note>Do not need to do a ucnt on SKU, can sumwd over boolean is_ad flags with weight being the time period. Also means my tabu can be at hier level, not week-div_store-hier level.</note>
+        <note>TASK: Right now am computing every single time period for every single fact by hard-coding fact and looping through all time periods... Correct way to do it, might be to hardcode tcol functions (i.e. these are my normal sum facts, those are my ucnt facts, etc)</note>
+        <note>Patch 3 note - added tactics to these tcols for the tactic selector</note>
+        <note>New PG Tactic boolean used below, slightly different</note>
+        <note>Lower three columns do not loop through tactic because they're based on tactic</note>
+        <note>tactic foreach (marker)</note>
+        <tabu breaks="div_store,{@phier}">
+            <foreach per="last1,last4,last13,last26,last52,kfytd,kqtd,kptd,pgfytd,pgqtd">
+                <if test="{contains(lst_to_str(@fact_list;',');@per)}">
+                    <foreach yr="ty,ly">
+                        <foreach tactic="{@tactic_selector.name}">
+                            <tcol name="{@tactic}_sales_{@per}_{@yr}" fun="sumwd" source="sales_amt" weight="{@tactic}_{@per}_{@yr}" label="Sales" format="type:currency;dec:0"/>
+                            <tcol name="{@tactic}_unitsls_{@per}_{@yr}" fun="sumwd" source="sales_qty" weight="{@tactic}_{@per}_{@yr}" label="Sales Units" format="type:num;dec:0"/>
+                            <tcol name="{@tactic}_vol_{@per}_{@yr}" fun="sumwd" source="volume" weight="{@tactic}_{@per}_{@yr}" label="Volume" format="type:num;dec:0"/>
+                            <tcol name="{@tactic}_giv_{@per}_{@yr}" fun="sumwd" source="corrected_giv_unit" weight="{@tactic}_{@per}_{@yr}" label="GIV" format="type:num;dec:0"/>
+                            <tcol name="{@tactic}_gmd_{@per}_{@yr}" fun="sumwd" source="gm_amt" weight="{@tactic}_{@per}_{@yr}_pg" label="GM $" format="type:currency;dec:0"/>
+                        </foreach>
+                        <tcol name="dp_{@per}_{@yr}" fun="sumwd" source="dsp_ct" weight="{@per}_{@yr}" label="Display Points" format=""/>
+                        <tcol name="fp_{@per}_{@yr}" fun="sumwd" source="st_ct" weight="{@per}_{@yr}" label="Feature Points" format=""/>
+                        <tcol name="pd_{@per}_{@yr}" fun="ucnt" source="dsku_{@per}_{@yr}" label="Points of Distribution"/>
+                    </foreach>
+                </if>
+            </foreach>
+        </tabu>
+        <note>Store Grouping Filter + Booleans</note>
+        <link table2="pg.kroger.stores" col="div_store" cols="{@storegroups_csl}">
+            <note>Create booleans based on store groupings</note>
+            <for i="1" to_="{lst_len(pkg_names(@store_col))}">
+                <if test="{@store_col.s{@i}<>''}">
+                    <willbe name="store_col{@i}_no_apostrophe" value="strsubst(strsubst({@store_col.s{@i}};'\'';0;'');',';0;'')"/>
+                </if>
+            </for>
+            <for i="1" to_="{lst_len(pkg_names(@store_val))}">
+                <for j="1" to_="{lst_len(@store_val.s{@i})}">
+                    <willbe name="sc{@i}_{@j}" value="store_col{@i}_no_apostrophe='{@store_val.s{@i}.{@j}}'"/>
+                </for>
+            </for>
+        </link>
+    </defblock>
+    <defblock name="main_tabu">
+        <note>No cbreaks. Xtab functionality sucks. Instead, create column groupings through an outer-most foreach loop, e.g. for store groupings</note>
+        <note>Patch 3 note - added tactics to the below foreach for tactic selector. Pulled out dp,fp, and pd into their own foreach bc tactic doesn't play on them.</note>
+        <note>Optimization: this is a good example of how to use conditionals to cut down on computations. Apply this concept for all of pre-through-post-tabu blocks</note>
+        <note>tactic foreach (marker)</note>
+        <tabu breaks="{lst_to_str(@phier;',')}">
+            <rollup type="hier" ind="j"/>
+            <for i="1" to="{lst_len(@phier)}">
+                <break col="{@phier.{@i}}" sort="up" placeholder="'0AA'" naorder="last"/>
+            </for>
+            <foreach store_group="{@storegroups_csl}" tally_="i">
+                <foreach per="last1,last4,last13,last26,last52,kfytd,kqtd,kptd,pgfytd,pgqtd">
+                    <if test="{contains(lst_to_str(@fact_list;',');@per)}">
+                        <foreach yr="ty,ly">
+                            <foreach metric="sales,unitsls,vol,giv,gmd" metric_labels="Sales,Sales Units,Volume,GIV,GM $" metric_formats="type:currency;dec:0,type:num;dec:0,type:currency;dec:0,type:num;dec:0,type:currency;dec:0">
+                                <foreach tactic="{@tactic_selector.name}" tactic_labels="{@tactic_selector.label}">
+                                    <tcol name="{@store_group}_{@tactic}_{@metric}_{@per}_{@yr}" fun="sumwd" source="{@tactic}_{@metric}_{@per}_{@yr}" weight="{@store_group}" label="{csl_pick(@storegroups_labels;@i)}`{@tactic_labels}`{@metric_labels}`{uppercase(@per)}{if(@yr='ly';' LY';'')}" format="{@metric_formats}"/>
+                                </foreach>
+                            </foreach>
+                            <foreach metric="dp,fp,pd" metric_labels="Display Points,Feature Points,Points of Distribution" metric_formats="type:num;dec:0,type:num;dec:0,type:num;dec:0">
+                                <tcol name="{@store_group}_{@metric}_{@per}_{@yr}" fun="sumwd" source="{@metric}_{@per}_{@yr}" weight="{@store_group}" label="{csl_pick(@storegroups_labels;@i)}`{@metric_labels}`{uppercase(@per)}{if(@yr='ly';' LY';'')}" format="{@metric_formats}"/>
+                            </foreach>
+                        </foreach>
+                    </if>
+                </foreach>
+            </foreach>
+        </tabu>
+        <col name="j" fixed="1"/>
+        <note>Creating Master Hierarchy Col</note>
+        <note>BITWISE FUNCTIONS CALCULATED HERE IF NEEDED</note>
+        <note>up calculates the higher level based on current aggregation level, down calculates the lower level</note>
+        <note><willbe name="up" value="bitlsl(j;1)+1" fixed="1"/>
+            <willbe name="down" value="bitlsr(j;1)" fixed="1"/></note>
+        <note>Originally tried creating lists of the hierarchy and using colpick to try and evaluate the column that was being referenced. But no way to get column _of column names_ to evaluate  if(csl_len('{@phier_csl}')&gt;0;csl_pick('{@phier_csl}';colpick);0)</note>
+        <merge table2="default.lonely" match="pad">
+            <willbe name="j" value="na"/>
+        </merge>
+        <willbe name="rowcnt" value="g_cnt(;)"/>
+        <willbe name="colpick" value="g_rankuniq(;;j)-1" fixed="1"/>
+        <sel value="if(rowcnt=1;j=na;j<>na)"/>
+        <willbe name="hier" value="if(colpick=0;'GRAND TOTAL';ifnull(r_pick({@phier};;colpick);splice('OTHER' r_pick({@phier};;colpick-1);' ')))" format="width:20" fixed="1"/>
+        <willbe name="padded" value="splice('-' strrepeat('   ';colpick) hier;'')" fixed="1" format="width:50" label="Hierarchy"/>
+    </defblock>
+    <defblock name="post_tabu" trend="">
+        <note>APPROPRIATE SORTS: because I created a placeholder 0AA which is always sorted first, and it does not default to NA, I can safely naorder=&quot;last&quot; here.</note>
+        <foreach break="{@phier}" tally_="i" dir_="reverse">
+            <sort col="{@break}" dir="up" naorder="last"/>
+        </foreach>
+        <note>Calculating IYAs + SHARE Facts</note>
+        <foreach store_group="{@storegroups_csl}" tally_="i">
+            <foreach per="last1,last4,last13,last26,last52,kfytd,kqtd,kptd,pgfytd,pgqtd">
+                <if test="{contains(lst_to_str(@fact_list;',');@per)}">
+                    <foreach yr="ty,ly">
+                        <note>tactic foreach (marker)</note>
+                        <foreach tactic="{@tactic_selector.name}" tactic_label="{@tactic_selector.label}">
+                            <willbe name="{@store_group}_{@tactic}_avg_unit_price_{@per}_{@yr}" value="{@store_group}_{@tactic}_sales_{@per}_{@yr}/{@store_group}_{@tactic}_unitsls_{@per}_{@yr}" label="{csl_pick(@storegroups_labels;@i)}`{@tactic_label}`Avg Unit Price`{uppercase(@per)}{if(@yr='ly';' LY';'')}" format="type:currency;dec:2;width:6"/>
+                            <willbe name="{@store_group}_{@tactic}_gmp_{@per}_{@yr}" value="{@store_group}_{@tactic}_gmd_{@per}_{@yr}/{@store_group}_{@tactic}_sales_{@per}_{@yr}" label="{csl_pick(@storegroups_labels;@i)}`{@tactic_label}`GM %`{uppercase(@per)}{if(@yr='ly';' LY';'')}" format="type:pct;dec:1;width:6"/>
+                        </foreach>
+                        <note>SHARE FACTS</note>
+                        <note>TASK: Include Share CYA, most likely includes putting all of this in a foreach with ty|ly.</note>
+                        <foreach metric="sales,unitsls,avg_unit_price,vol,giv,gmd,gmp" metric_labels="Sales,Sales Units,Avg Unit Price,Volume,GIV,GM $,GM %">
+                            <if test="{contains(lst_to_str(@fact_list;',');@metric)}">
+                                <note>tactic foreach (marker)</note>
+                                <foreach tactic="{@tactic_selector.name}" tactic_label="{@tactic_selector.label}">
+                                    <for i="0" to="{lst_len(@phier)}">
+                                        <willbe name="{@store_group}_{@tactic}_{@metric}_{@per}_{@yr}share_basis_{@i}" value="g_first({lst_pick({@phier};{@i})};;;{@store_group}_{@tactic}_{@metric}_{@per}_{@yr})"/>
+                                    </for>
+                                    <willbe name="{@store_group}_{@tactic}_{@metric}_{@per}_{@yr}share_basis" value="r_pick('{@store_group}_{@tactic}_{@metric}_{@per}_{@yr}share_basis*';;colpick)"/>
+                                    <willbe name="{@store_group}_{@tactic}_{@metric}_{@per}_{@yr}share" value="({@store_group}_{@tactic}_{@metric}_{@per}_{@yr}/{@store_group}_{@tactic}_{@metric}_{@per}_{@yr}share_basis)" label="{csl_pick(@storegroups_labels;@i)}`{@tactic_label}`{@metric_labels} Share`{uppercase(@per)}" format="type:pct;dec:1"/>
+                                </foreach>
+                            </if>
+                        </foreach>
+                        <foreach metric="dp,fp,pd" metric_labels="Display Points,Feature Points,Points of Distribution">
+                            <if test="{contains(lst_to_str(@fact_list;',');@metric)}">
+                                <for i="0" to="{lst_len(@phier)}">
+                                    <willbe name="{@store_group}_{@metric}_{@per}_{@yr}share_basis_{@i}" value="g_first({lst_pick({@phier};{@i})};;;{@store_group}_{@metric}_{@per}_{@yr})"/>
+                                </for>
+                                <willbe name="{@store_group}_{@metric}_{@per}_{@yr}share_basis" value="r_pick('{@store_group}_{@metric}_{@per}_{@yr}share_basis*';;colpick)"/>
+                                <willbe name="{@store_group}_{@metric}_{@per}_{@yr}share" value="({@store_group}_{@metric}_{@per}_{@yr}/{@store_group}_{@metric}_{@per}_{@yr}share_basis)" label="{csl_pick(@storegroups_labels;@i)}`{@metric_labels} Share`{uppercase(@per)}" format="type:pct;dec:1"/>
+                            </if>
+                        </foreach>
+                    </foreach>
+                    <note>SHARE CYA</note>
+                    <foreach metric="sales,unitsls,avg_unit_price,vol,giv,gmd,gmp" metric_labels="Sales,Sales Units,Avg Unit Price,Volume,GIV,GM $,GM %">
+                        <if test="{contains(lst_to_str(@fact_list;',');@metric)}">
+                            <note>tactic foreach (marker)</note>
+                            <foreach tactic="{@tactic_selector.name}" tactic_label="{@tactic_selector.label}">
+                                <willbe name="{@store_group}_{@tactic}_{@metric}_{@per}_sharecya" value="({@store_group}_{@tactic}_{@metric}_{@per}_tyshare-{@store_group}_{@tactic}_{@metric}_{@per}_lyshare)" label="{csl_pick(@storegroups_labels;@i)}`{@tactic_label}`{@metric_labels} Share`{uppercase(@per)}" format="type:num;dec:1"/>
+                            </foreach>
+                        </if>
+                    </foreach>
+                    <foreach metric="dp,fp,pd" metric_labels="Display Points,Feature Points,Points of Distribution">
+                        <if test="{contains(lst_to_str(@fact_list;',');@metric)}">
+                            <willbe name="{@store_group}_{@metric}_{@per}_sharecya" value="({@store_group}_{@metric}_{@per}_tyshare-{@store_group}_{@metric}_{@per}_lyshare)" label="{csl_pick(@storegroups_labels;@i)}`{@metric_labels} Share`{uppercase(@per)}" format="type:num;dec:1"/>
+                        </if>
+                    </foreach>
+                    <foreach metric="sales,unitsls,avg_unit_price,vol,giv,gmd,gmp" metric_labels="Sales,Sales Units,Avg Unit Price,Volume,GIV,GM $,GM %">
+                        <if test="{contains(lst_to_str(@fact_list;',');@metric)}">
+                            <note>tactic foreach (marker)</note>
+                            <foreach tactic="{@tactic_selector.name}" tactic_label="{@tactic_selector.label}">
+                                <willbe name="{@store_group}_{@tactic}_{@metric}_{@per}_iya" value="({@store_group}_{@tactic}_{@metric}_{@per}_ty/{@store_group}_{@tactic}_{@metric}_{@per}_ly)*100" label="{csl_pick(@storegroups_labels;@i)}`{@tactic_label}`{@metric_labels} IYA`{uppercase(@per)}" format="type:num;dec:1;width:6"/>
+                                <willbe name="{@store_group}_{@tactic}_{@metric}_{@per}_cya" value="({@store_group}_{@tactic}_{@metric}_{@per}_ty-{@store_group}_{@tactic}_{@metric}_{@per}_ly)" label="{csl_pick(@storegroups_labels;@i)}`{@tactic_label}`{@metric_labels} CYA`{uppercase(@per)}" format="type:currency;dec:0;width:12"/>
+                                <willbe name="{@store_group}_{@tactic}_{@metric}_{@per}_p" value="({@store_group}_{@tactic}_{@metric}_{@per}_cya/{@store_group}_{@tactic}_{@metric}_{@per}_ly)" label="{csl_pick(@storegroups_labels;@i)}`{@tactic_label}`{@metric_labels} % Ch v. YA`{uppercase(@per)}" format="type:pct;dec:1;width:6"/>
+                            </foreach>
+                        </if>
+                    </foreach>
+                    <foreach metric="dp,fp,pd" metric_labels="Display Points,Feature Points,Points of Distribution">
+                        <if test="{contains(lst_to_str(@fact_list;',');@metric)}">
+                            <willbe name="{@store_group}_{@metric}_{@per}_iya" value="({@store_group}_{@metric}_{@per}_ty/{@store_group}_{@metric}_{@per}_ly)*100" label="{csl_pick(@storegroups_labels;@i)}`{@metric_labels} IYA`{uppercase(@per)}" format="type:num;dec:1;width:6"/>
+                            <willbe name="{@store_group}_{@metric}_{@per}_cya" value="({@store_group}_{@metric}_{@per}_ty-{@store_group}_{@metric}_{@per}_ly)" label="{csl_pick(@storegroups_labels;@i)}`{@metric_labels} CYA`{uppercase(@per)}" format="type:currency;dec:0;width:12"/>
+                            <willbe name="{@store_group}_{@metric}_{@per}_p" value="({@store_group}_{@metric}_{@per}_cya/{@store_group}_{@metric}_{@per}_ly)" label="{csl_pick(@storegroups_labels;@i)}`{@metric_labels} % Ch v. YA`{uppercase(@per)}" format="type:pct;dec:1;width:6"/>
+                        </if>
+                    </foreach>
+                </if>
+            </foreach>
+        </foreach>
+        <note>Selection that takes out NA Grand Total Values</note>
+        <note>IGNORED OUT FOR NOW. PERHAPS WE CAN INCLUDE WHEN WE DO FILTER THRESHOLDS</note>
+        <note> <sel value="~(pd_last52_ty<1 & category_2=na)"/> </note>
+        <note> <sel value="~(label_hier=NA & j<>15)"/> </note>
+        <note>COLORD and COLUMN FORMATTING</note>
+        <note>COLORD ACTUALLY CHOOSES WHICH FACTS TO DISPLAY</note>
+        <colord cols="padded,{@fact_list}" hard="1"/>
+        <note>Multiple Colords with hards will help cascade column order</note>
+        <colord cols="padded,*pgfytd*,*pgqtd*,*kfytd*,*kqtd*,*kptd*,*last52*,*last26*,*last13*,*last4*,*last1_*" hard="1"/>
+        <colord cols="padded,*_ty,*_cya,*_p,*_iya,*_tyshare,*_sharecya" hard="1"/>
+        <colord cols="padded,*sales*,*unitsls*,*avg_unit_price*,*vol*,*giv*,*gmd*,*gmp*,*dp*,*fp*,*pd*" hard="1"/>
+        <colord cols="padded,{@tactic_colord},*dp*,*fp*,*pd*" hard="1"/>
+        <colord cols="padded,{@storegroups_colord}" hard="1"/>
+        <note>Conditional color formatting comes post colord</note>
+        <willbe name="bgcolor" value="'white'"/>
+        <foreach col="{@fact_list}">
+            <willbe name="fgcolor_{@col}" value="if(contains('{@col}';'_cya');if({@col}>0;'green';'red');contains('{@col}';'_iya');if({@col}>100;'green';'red');contains('{@col}';'_p');if({@col}>0;'green';'red');'black')"/>
+        </foreach>
+        <note>Could also add a backgroundcolor for first col, hier (would be based on j most likely, the agg indicator)</note>
+    </defblock>
+    <note>basic_report combines all the main_query blocks</note>
+    <block name="basic_report">
+        <insert block="setup"/>
+        <insert block="prep_tabu"/>
+        <insert block="main_tabu"/>
+        <insert block="post_tabu" trend="0"/>
+        <merge/>
+    </block>
+    <note>DO BLOCKS</note>
+    <block name="latest_date_do">
+        <do on_="init" value_="@latest_date">
+            <base table="pg.kroger.datesloaded_{@cal}"/>
+            <tabu breaks="">
+                <tcol fun="last" source="{@cal}_week_end"/>
+            </tabu>
+        </do>
+        <do onchange_="@cal" value_="@latest_date">
+            <base table="pg.kroger.datesloaded_{@cal}"/>
+            <tabu breaks="">
+                <tcol fun="last" source="{@cal}_week_end"/>
+            </tabu>
+        </do>
+    </block>
+    <block name="store_grouping_do">
+        <do on_="init">
+            <set storegroups_sel=""/>
+            <set storegroups_colord=""/>
+            <set storegroups_labels=""/>
+            <for i="1" to_="{lst_len(pkg_names(@store_val))}">
+                <for j="1" to_="{lst_len(@store_val.s{@i})}">
+                    <set storegroups_sel="{@storegroups_sel}{if(@i=1&@j=1;'';'|')}sc{@i}_{@j}"/>
+                    <set storegroups_colord="{@storegroups_colord}{if(@i=1&@j=1;'';',')}*sc{@i}_{@j}*"/>
+                    <set storegroups_labels="{@storegroups_labels}{if(@i=1&@j=1;'';',')}{lst_pick(@store_val.s{@i};{@j})}"/>
+                </for>
+            </for>
+            <set storegroups_csl="{strsubst(@storegroups_sel;'|';0;',')}"/>
+        </do>
+        <do onchange_="store_val">
+            <set storegroups_sel=""/>
+            <set storegroups_colord=""/>
+            <set storegroups_labels=""/>
+            <for i="1" to_="{lst_len(pkg_names(@store_val))}">
+                <for j="1" to_="{lst_len(@store_val.s{@i})}">
+                    <set storegroups_sel="{@storegroups_sel}{if(@i=1&@j=1;'';'|')}sc{@i}_{@j}"/>
+                    <set storegroups_colord="{@storegroups_colord}{if(@i=1&@j=1;'';',')}*sc{@i}_{@j}*"/>
+                    <set storegroups_labels="{@storegroups_labels}{if(@i=1&@j=1;'';',')}{lst_pick(@store_val.s{@i};{@j})}"/>
+                </for>
+            </for>
+            <set storegroups_csl="{strsubst(@storegroups_sel;'|';0;',')}"/>
+        </do>
+    </block>
+    <note>Patch 3 note - new do for ancillary tactic variables</note>
+    <block name="tactic_do">
+        <do on_="init">
+            <set tactic_sel=""/>
+            <set tactic_colord=""/>
+            <for i="1" to_="{lst_len(@tactic_selector.name)}">
+                <set tactic_colord="{@tactic_colord}{if(@i=1;'';',')}*{@tactic_selector.name.{@i}}*"/>
+            </for>
+            <set tactic_sel="{strsubst(lst_to_str(@tactic_selector.name;',');',';0;'|')}"/>
+        </do>
+        <do onchange_="tactic_selector">
+            <set tactic_sel=""/>
+            <set tactic_colord=""/>
+            <for i="1" to_="{lst_len(@tactic_selector.name)}">
+                <set tactic_colord="{@tactic_colord}{if(@i=1;'';',')}*{@tactic_selector.name.{@i}}*"/>
+            </for>
+            <set tactic_sel="{strsubst(lst_to_str(@tactic_selector.name;',');',';0;'|')}"/>
+        </do>
+    </block>
+    <note>TEST DO BLOCK
+        Filter: SAE Desk to PHC
+        Groupby: Line 3 in Desired Drill Path Tab
+        Facts: Sales 52, Sales p% 52,26,13,4,1 ; $ Share 52, $ Share % 52,26,13,4,1</note>
+    <block name="test_init_do">
+        <do on_="init">
+            <set filter_col="{pkg('f1';'sae_desk')}" filter_val="{pkg('f1';'PHC')}"/>
+            <set fact="{pkg('sales';{pkg('ty' 'p' 'tyshare' 'sharecya';'sales_last52_ty' 'sales_last52_p,sales_last26_p,sales_last13_p,sales_last4_p,sales_last1_p' 'sales_last52_tyshare' 'sales_last52_sharecya,sales_last26_sharecya,sales_last13_sharecya,sales_last4_sharecya,sales_last1_sharecya' )})}"/>
+            <set fact_sel="sales"/>
+            <set fact_list="{lst('sales_last52_ty' 'sales_last52_p' 'sales_last26_p' 'sales_last13_p' 'sales_last4_p' 'sales_last1_p' 'sales_last52_tyshare' 'sales_last52_sharecya' 'sales_last26_sharecya' 'sales_last13_sharecya' 'sales_last4_sharecya' 'sales_last1_sharecya')}"/>
+            <set derived="{pkg('sales' 'unitsls' 'gmd' 'gmp' 'vol' 'giv' 'oos' 'dp' 'fp' 'pd';'ty,p,tyshare,sharecya' '' '' '' '' '' '' '' '' '' )}"/>
+            <set gridcnt="3"/>
+            <set groupby="{pkg('g1' 'g2' 'g3';{lst('subcategory_2' 'segment_3' 'subsegment_3')} {lst('subcategory_2' 'brand_5')} {lst('manufacturer_4' 'brand_5')} )}"/>
+        </do>
+    </block>
+</library>

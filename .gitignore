@@ -1,0 +1,12 @@
+/.idea
+/*.iml
+/.idea_modules
+/.classpath
+/.project
+/RUNNING_PID
+/.settings
+.DS_Store
+build/
+bin/
+node_modules/
+lib/

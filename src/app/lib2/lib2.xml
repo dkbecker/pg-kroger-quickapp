@@ -1,0 +1,369 @@
+<library>
+    <note>DO BLOCKS</note>
+    <block name="fact_sel_onchange_do">
+        <note>When user un-clicks a basic fact, resets any selections made in the nest</note>
+        <note>Works w/ packages. Value can't be set to empty, needs to be set to empty package, or the appropriate key needs to have an empty value</note>
+        <do onchange_="@fact_sel">
+            <foreach basic_fact="{pkg_names(@fact)}">
+                <if test="{~contains(@fact_sel;@basic_fact)}">
+                    <setv name="fact.{@basic_fact}" value="{pkg(;)}"/>
+                    <setv name="derived.{@basic_fact}" value=""/>
+                </if>
+            </foreach>
+        </do>
+        <note>When user un-clicks a derived fact, resets time selections made in nest. Needs to clear fact.name if @derived doesn't contain the derivation.      Goes through all the basic facts, and then all the current derivations. If those derivations don't exist in the derived package, the value needs to be cleared.</note>
+        <do onchange_="@derived">
+            <foreach basic_fact="{pkg_names(@fact)}">
+                <foreach derived_fact="{pkg_names(@fact.{@basic_fact})}">
+                    <if test="{~contains(@derived.{@basic_fact};@derived_fact)}">
+                        <setv name="fact.{@basic_fact}.{@derived_fact}" value=""/>
+                    </if>
+                </foreach>
+            </foreach>
+        </do>
+        <note>Creates a variable fact_list which is a concatenated list of all the final derived fact names to pass to the query</note>
+        <do onchange_="@fact,@fact_sel,@derived,@store_val,@tactic_selector,@title">
+            <foreach basic_fact="{pkg_names(@fact)}" tally_="i">
+                <if test="{@i=1}">
+                    <set fact_list="{lst()}"/>
+                </if>
+                <note>TASK: This whole block is probably easier if we change fact_list to a string</note>
+                <foreach derived_fact="{pkg_names(@fact.{@basic_fact})}">
+                    <set fact_list="{jnlst(@fact_list str_to_lst(@fact.{@basic_fact}.{@derived_fact};',') )}"/>
+                </foreach>
+            </foreach>
+            <note>Adding in store grouping prefix to each element in fact_list</note>
+            <set fact_list="{lst_to_str(@fact_list;',')}" fact_list_temp=""/>
+            <foreach storegroup="{@storegroups_csl}" tally_="i">
+                <note>Patch 3 note - added tactic var loop</note>
+                <note>tactic foreach (marker)</note>
+                <foreach tactic="{@tactic_selector.name}" tally_="j">
+                    <foreach fact="{@fact_list}" tally_="k">
+                        <set fact_list_temp="{@fact_list_temp}{if(@i=1&@j=1&@k=1;'';',')}{@storegroup}{if(contains('{@fact}';'pd' 'dp' 'fp');'';'_{@tactic}')}_{@fact}"/>
+                    </foreach>
+                </foreach>
+            </foreach>
+            <set fact_list="{str_to_lst(@fact_list_temp;',')}"/>
+        </do>
+    </block>
+    <block name="fact_sel_init_do">
+        <note>INITS fact and derived package</note>
+        <do on_="init" when_="{@uninit}">
+            <foreach basic_fact="sales,unitsls,gmd,gmp,vol,giv,oos,dp,fp,pd">
+                <setv name="derived.{@basic_fact}" value=""/>
+                <setv name="fact.{@basic_fact}" value="{pkg(;)}"/>
+            </foreach>
+            <set uninit="0"/>
+        </do>
+    </block>
+    <block name="report_check_init_do">
+        <do on_="init" value_="@reportcheck" row_="1" col_="1">
+            <base table="pg.kroger.products"/>
+            <willbe name="rpt" value="exclude_flag='Rpt'"/>
+            <willbe name="rpt_check" value="exclude_flag='RptCHECK'"/>
+            <willbe name="rpt_num" value="g_cnt(;rpt)"/>
+            <willbe name="rptc_num" value="g_cnt(;rpt_check)"/>
+            <willbe name="rpt_p" value="rptc_num/(rpt_num+rptc_num)"/>
+            <sel value="i_()=1"/>
+            <colord cols="rpt_p"/>
+        </do>
+    </block>
+    <block name="report_check_onchange_do">
+        <do onchange_="@filter_val" value_="@reportcheck" row_="1" col_="1">
+            <meta>empty
+            </meta>
+            <base table="pg.kroger.products"/>
+            <insert block="filter_block"/>
+            <willbe name="rpt" value="exclude_flag='Rpt'"/>
+            <willbe name="rpt_check" value="exclude_flag='RptCHECK'"/>
+            <willbe name="rpt_num" value="g_cnt(;rpt)"/>
+            <willbe name="rptc_num" value="g_cnt(;rpt_check)"/>
+            <willbe name="rpt_p" value="rptc_num/(rpt_num+rptc_num)"/>
+            <merge table2="default.lonely">
+                <willbe name="rpt_p" value="real(NA)"/>
+                <colord cols="rpt_p"/>
+            </merge>
+            <sel value="i_()=1"/>
+            <colord cols="rpt_p"/>
+        </do>
+    </block>
+    <block name="reportcheck_sales_do">
+        <do onsubmit_="resultnest" value1_="@reportcheck_sales1" row1_="1" col1_="1" value2_="@reportcheck_sales52" row2_="1" col2_="1">
+            <note>setup block should grab aprops sales table and do the filters</note>
+            <insert block="setup"/>
+            <willbe name="rpt" value="exclude_flag='Rpt'"/>
+            <willbe name="rpt_check" value="exclude_flag='RptCHECK'"/>
+            <willbe name="sales_last1" value="last1_ty*sales_amt"/>
+            <willbe name="sales_last52" value="last52_ty*sales_amt"/>
+            <tabu breaks="">
+                <tcol fun="sum" source="sales_last1" name="denom1"/>
+                <tcol fun="sumwd" source="sales_last1" weight="rpt_check" name="num1"/>
+                <tcol fun="sum" source="sales_last52" name="denom52"/>
+                <tcol fun="sumwd" source="sales_last52" weight="rpt_check" name="num52"/>
+            </tabu>
+            <willbe name="rpt_p1" value="num1/denom1"/>
+            <willbe name="rpt_p52" value="num52/denom52"/>
+            <colord cols="rpt_p1,rpt_p52"/>
+        </do>
+    </block>
+    <defblock name="m6_segmentation_grid">
+        <base table="pg.kroger.products"/>
+        <colord cols="dept_name,subdept_name,commodity_name,subcommodity_name"/>
+        <columns/>
+        <colord cols="name,label"/>
+    </defblock>
+    <defblock name="key_attributes_grid">
+        <base table="pg.kroger.products"/>
+        <colord cols="grocery_hbc,category,department_0,mega_gbu_1,category_2,subcategory_2,segment_3,subsegment_3,manufacturer_4,brand_5,subbrand_6,subbrand_additional_6,count_7"/>
+    </defblock>
+    <defblock name="secondary_attributes_grid">
+        <base table="pg.kroger.products"/>
+        <colord cols="absorbency,active_deletes,additive,audience,benefit,botique,concentration,coverage,dispenser,family_size_y_n,form,giv_unit,lcp_group,lotion_nonlotion,merch_groups,natural,ppg_cas,price_segment,print,rbp_group,refill,roll_equivalent,roll_life,scent,shade,shelf_efficiency,size_group_size,size_pack_size,size_total_wipes,size_unit_size,size_unit_measure,stat_unit_factor,strength,suds,system,thickness,timing,type,upc_with_desc,use,variety,brand_cntxrollname_roll_eq,brand_roll_name,brand_size_group,category_brand,category_roll_equivalent,category_roll_name,category_size_group,seg_brand,seg_brand_subbrnd_form,seg_subbrand,seg_form,seg_form_brand,seg_concentration,seg_conc_brand,seg_conc_brand_pack_size,seg_mono_brand_rotation"/>
+        <columns/>
+        <colord cols="name,label"/>
+    </defblock>
+    <note>Filters out cols w too many unique vals</note>
+    <note>TASK: Make respective of other filters? i.e. include other filters in dropdown</note>
+    <note>TASK: Right now filtering out if over 2000 values... drops mfgr, can we increase max dropdown size?</note>
+    <defblock name="dropdowngrid_cols">
+        <loop with_="x">
+            <outer>
+                <base table="pg.kroger.products"/>
+                <columns/>
+                <willbe name="splice" value="g_splice(;;;name;',';)" fixed="1"/>
+                <sel value="i_()=1"/>
+            </outer>
+            <inner>
+                <base table="pg.kroger.products"/>
+                <tabu breaks="">
+                    <foreach col="{@x.splice}">
+                        <tcol fun="ucnt" name="{@col}" source="{@col}"/>
+                    </foreach>
+                </tabu>
+            </inner>
+        </loop>
+        <transpose namecol="name"/>
+        <sel value="m0<2000"/>
+        <colord cols="name"/>
+        <for i="1" to_="10">
+            <if test="{@filter_col.f{@i}._defined}">
+                <sel value="name<>'{@filter_col.f{@i}}"/>
+            </if>
+        </for>
+        <sort col="name" dir="up"/>
+    </defblock>
+    <defblock name="bind_to_init">
+        <set bindlist="store_col,store_val,left_nest_tab,groupby1,groupby_list1,filter_col_1,filter_val_1,dropgrid_inside_var"/>
+        <set tolist="store_col,store_val,left_nest_tab,groupby.g1,groupby_list1,filter_col.f1,filter_val.f1,dropgrid_outside_var"/>
+    </defblock>
+    <defblock name="bind_to_chg">
+        <note>On change, clear my bind/to lists so we can build them back up</note>
+        <set bindlist="store_col,store_val,left_nest_tab,dropgrid_inside_var" tolist="store_col,store_val,left_nest_tab,dropgrid_outside_var"/>
+        <for i="1" to_="{@gridcnt}">
+            <set bindlist="{string(lst_to_str(@bindlist;','),'groupby{@i},groupby_list{@i}')}" tolist="{string(lst_to_str(@tolist;','),'groupby.g{@i},groupby_list{@i}')}"/>
+        </for>
+        <for i="1" to_="{@filtercnt}">
+            <setv name="bindlist" value="{string(lst_to_str(@bindlist;','),'filter_col_{@i},filter_val_{@i}')}"/>
+            <setv name="tolist" value="{string(lst_to_str(@tolist;','),'filter_col.f{@i},filter_val.f{@i}')}"/>
+        </for>
+    </defblock>
+    <defblock name="addfilter">
+        <note>addfilter block creates new variables for the new filter to use</note>
+        <set filtercnt="{@filtercnt+1}"/>
+        <setv name="filter_col.f{@filtercnt}" value=""/>
+        <setv name="filter_val.f{@filtercnt}" value=""/>
+        <ignore>
+            <expand block="bind_to_chg"/>
+        </ignore>
+    </defblock>
+    <defblock name="dropfilter">
+        <note>dropfilter block sets the variables of a deleted filter to blank</note>
+        <for filter="{@dropfilter_var}" to_="{@filtercnt}">
+            <setv name="filter_col.f{@filter}" value="{@filter_col.f{@filter+1}}"/>
+            <setv name="filter_val.f{@filter}" value="{@filter_val.f{@filter+1}}"/>
+        </for>
+        <setv name="filter_col.f{@filtercnt}" value=""/>
+        <setv name="filter_val.f{@filtercnt}" value=""/>
+        <set filtercnt="{max(@filtercnt-1;0)}"/>
+        <set dropfilter_var="0"/>
+        <ignore>
+            <expand block="bind_to_chg"/>
+        </ignore>
+    </defblock>
+    <defblock name="addgrid">
+        <note>addgrid block creates new variables for the new grid to use</note>
+        <set gridcnt="{@gridcnt+1}"/>
+        <setv name="groupby.g{@gridcnt}" value="{lst()}"/>
+        <setv name="groupby_list{@gridcnt}" value="m6"/>
+        <expand block="bind_to_chg"/>
+    </defblock>
+    <defblock name="dropgrid">
+        <note>dropgrid block sets the variables of a deleted grid to blank</note>
+        <note>bind_to_chg shouldddd take care of removing the key-value pair from groupby package.</note>
+        <note>TASK (completed): Type error when dropping grid likely due to groupby not being holdfor in the nest, so we're setting the groupby to empty and that throws a type error in the RHS nest grid which now doesn't have an appropriate value. Should fix itself if we fix the holdfor issue.</note>
+        <set gridcnt="{max(@gridcnt-1;1)}"/>
+        <setv name="groupby.g{@gridcnt+1}" value="{lst()}"/>
+        <setv name="groupby.g{@gridcnt+1}" value=""/>
+        <expand block="bind_to_chg"/>
+    </defblock>
+    <defblock name="dropgrid_new">
+        <note>dropfilter block sets the variables of a deleted filter to blank</note>
+        <if test="{@dropgrid_outside_var>0}">
+            <for grid="{@dropgrid_outside_var}" to_="{@gridcnt}">
+                <setv name="groupby.g{@grid}" value="{@groupby.g{@grid+1}}"/>
+            </for>
+            <setv name="groupby.g{@gridcnt}" value="{lst()}"/>
+            <set gridcnt="{max(@gridcnt-1;0)}"/>
+            <set dropgrid_var="0"/>
+            <expand block="bind_to_chg"/>
+        </if>
+    </defblock>
+    <defblock name="tactic_checklist_table">
+        <base table="default.lonely"/>
+        <willbe name="rows" value="8"/>
+        <sel value="rows" expand="1"/>
+        <willbe name="name" value="case(i_();1;'tactic_total';2;'is_either';3;'is_both';4;'dsp_ct';5;'is_dispwofeature';6;'st_ct';7;'is_featurewodisp';8;'is_nopromo';'')"/>
+        <willbe name="label" value="case(i_();1;'Total';2;'Any Promo';3;'Feature and Display';4;'Any Display';5;'Display Only';6;'Any Feature';7;'Feature Only';8;'No Promo';'')"/>
+        <colord cols="name,label"/>
+    </defblock>
+    <note>Sets variables groupbys_defined and derived_fact_selected equal to 0</note>
+    <defblock name="result_conditionals_init">
+        <set groupbys_defined="0"/>
+        <set tactics_defined="1"/>
+        <set derived_fact_selected="0"/>
+        <set time_period_selected="0"/>
+        <set result_invmsg="Please make the following selections and submit again: {if({@groupbys_defined=0};'Grid Group-bys ' ;'')}{if({@derived_fact_selected=0};'Derived Facts';'')}"/>
+    </defblock>
+    <defblock name="result_conditionals">
+        <set result_invmsg="Please make the following selections and submit again: {if({@groupbys_defined=0};'Grid Group-bys ' ;'')}{if({@derived_fact_selected=0};'Derived Facts';'')}"/>
+    </defblock>
+    <note>Whenever user makes a change to any groupby sorter widget, checks through the groupby package from g1 to g{@gridnct} to see if any of them have lst_len = 0. If so, sets the variable groupbys_defined to 0, which prevents the result nest from appearing.</note>
+    <defblock name="groupby_conditional">
+        <setv name="groupbys_defined" value="1"/>
+        <for i="1" to_="{@gridcnt}">
+            <if test="{lst_len(@groupby.g{@i})=0}">
+                <setv name="groupbys_defined" value="0"/>
+            </if>
+        </for>
+    </defblock>
+    <note>Whenever user makes a change to tactic_selector, checks if tactic_selector.name is defined. If so, sets to 1. If not, 0.</note>
+    <defblock name="tactics_conditional">
+        <if test="{@tactic_selector.name._defined}">
+            <then>
+                <set tactics_defined="1"/>
+            </then>
+            <else>
+                <set tactics_defined="0"/>
+            </else>
+        </if>
+    </defblock>
+    <note>Whenever user makes a change to any derived fact selector widget, checks through all members of the derived package to see if any of them are equal to ''. If so, adds one to the variable @derived_fact_selected, which prevents the result nest from appearing if equal to 0.</note>
+    <defblock name="derived_fact_conditional">
+        <set derived_fact_selected="0"/>
+        <foreach fact="{str_to_lst(@fact_sel;',')}">
+            <if test="{@derived.{@fact}=''}">
+                <then>
+                    <setv name="derived_fact_selected" value="{@derived_fact_selected}"/>
+                </then>
+                <else>
+                    <setv name="derived_fact_selected" value="{@derived_fact_selected+1}"/>
+                </else>
+            </if>
+        </foreach>
+    </defblock>
+    <defblock name="time_period_conditional">
+        <set time_period_selected="0"/>
+        <foreach basic="{str_to_lst(@fact_sel;',')}">
+            <if test="{@derived.{@basic}<>''}">
+                <then>
+                    <foreach derived="{@derived.{@basic}}">
+                        <if test="{@fact.{@basic}.{@derived}<>''}">
+                            <then>
+                                <setv name="time_period_selected" value="{@time_period_selected+1}"/>
+                            </then>
+                            <else>
+                                <setv name="time_period_selected" value="{@time_period_selected}"/>
+                            </else>
+                        </if>
+                    </foreach>
+                </then>
+            </if>
+        </foreach>
+    </defblock>
+    <block name="m6_groupby_warning_do">
+        <do onchange_="@groupby">
+            <foreach list="{pkg_names(@groupby)}">
+                <if test="{contains(lst_to_str(@groupby.{@list};',');'m6')}">
+                    <set warning="1"/>
+                </if>
+            </foreach>
+        </do>
+    </block>
+    <block name="selections_in_effect">
+        <widget class_="text" text_="Selections" rotate_="270" margin_="20px -30px 0px 0" style_="font-weight:bold;font-family:trebuchet ms;"/>
+        <layout name="selections_in_effect" halign_="left" background_="#c8c8c8" height_="80" margin_="0px 10px 0px 0" width_="500" arrange_="h">
+            <layout arrange_="v" padding_="5px 0px 0px 10" width_="250">
+                <widget name="dataloaded" class_="text" type_="html" text_="Data Loaded Through:<font color='red'> {format(@latest_date;'type:ansidate')}</font>" padding_="0"/>
+                <widget name="salessel" class_="text" type_="html" text_="Sales Table: <font color='red'>{if(@cal='ad';'Ad';'Fiscal')}</font>" padding_="0"/>
+                <for filter="1" to_="3">
+                    <widget name="filtersel_f{@filter}" class_="text" type_="html" text_="Filter {@filter}: <font color='red'>{@filter_col.f{@filter}} = {@filter_val.f{@filter}}</font>" require_="{@filter_val.f{@filter}._or_empty <> ''}" padding_="0" invmode_="hide"/>
+                </for>
+            </layout>
+            <layout arrange_="v" padding_="5px 0px 0px 10" width_="250">
+                <for filter="4" to_="10">
+                    <widget name="filtersel_f{@filter}" class_="text" type_="html" text_="Filter {@filter}: <font color='red'>{@filter_col.f{@filter}} = {@filter_val.f{@filter}}</font>" require_="{@filter_val.f{@filter}._or_empty <> ''}" padding_="0" invmode_="hide"/>
+                </for>
+            </layout>
+        </layout>
+        <layout name="alerts_layout" arrange_="h" margin_="0px 0px 0px -20px">
+            <widget class_="text" text_="Alerts" rotate_="270" margin_="20px -20px 0px 0" style_="font-weight:bold;font-family:trebuchet ms;"/>
+            <layout arrange_="v" halight_="left" padding_="5px 0px 0px 10" background_="#c8c8c8" width_="400" height_="75" margin_="0px 10px 0px 0">
+                <widget name="uat_alert" class_="text" text_="UAT Users: Please note app is still under active development" color_="red" style_="font-weight:bold;" padding_="0"/>
+                <widget name="uat_alert2" class_="text" text_="Please direct UAT feedback + bugs to Jacque Gagas" padding_="0"/>
+                <widget name="reportcheck" class_="text" type_="html" text_="Report Check: <font color='red'>{format(@reportcheck;'type:pct;dec:1')}</font> of UPCs need checking" padding_="0"/>
+                <widget name="reportcheck2" class_="text" type_="html" text_="<font color='red'>{format(@reportcheck_sales1;'type:pct;dec:1')}</font> of L1W $, <font color='red'>{format(@reportcheck_sales52;'type:pct;dec:1')}</font> of L52W $ impacted" require_="{~@submithold}" padding_="0" invmode_="hide" margin_="0px 0px 0px 85"/>
+                <ignore>
+                    <widget name="error_msg" type_="html" class_="text" text_="error message: {@result_invmsg}" padding_="0"/>
+                    <widget name="g1" class_="text" type_="html" text_="groupby g1: {@groupby.g1}" padding_="0"/>
+                    <widget class_="text" type_="html" text_="dropgrid_outside_var: {@dropgrid_outside_var}" padding_="0" refreshon_="1"/>
+                    <widget class_="text" type_="html" text_="dropgrid_inside_var: {@dropgrid_inside_var}" padding_="0"/>
+                    <widget name="g1_len" type_="html" class_="text" text_="groupby g1 list length: {lst_len(@groupby.g1)}" padding_="0"/>
+                    <widget name="groupbys_def" type_="html" class_="text" text_="groupbys defined: {@groupbys_defined}" padding_="0"/>
+                    <widget name="g1 blank" type_="html" class_="text" text_="groupby g1 '': {@groupby.g1=''}" padding_="0"/>
+                    <widget name="g1 na" type_="html" class_="text" text_="groupby g1 na: {@groupby.g1=na}" padding_="0"/>
+                </ignore>
+            </layout>
+        </layout>
+        <layout name="patch_notes_layout" arrange_="h" margin_="0px 0px 0px -20px">
+            <widget class_="text" text_="Patch Notes" rotate_="270" margin_="20px -37px 0px 0" style_="font-weight:bold;font-family:trebuchet ms;"/>
+            <layout arrange_="v" halight_="left" padding_="5px 5px 0px 10" background_="#c8c8c8" width_="200" height_="75" margin_="0px 0px 0px 0">
+                <widget name="patch1" class_="text" text_="1/18: Share of Product & Share of Product CYA fixed" padding_="0" style_="font-size:10px"/>
+                <widget name="patch2" class_="text" text_="1/23: Exclude Flag filter, MM labels, PG FYTD, New Store Groupings, ..." tooltip_="...grid widths," padding_="0" style_="font-size:10px"/>
+                <widget name="patch3" class_="text" text_="1/29: Tactic Selector, LHS formatting, Store Col Grouping un-nested" tooltip_="...grid widths," padding_="0" style_="font-size:10px"/>
+            </layout>
+        </layout>
+    </block>
+    <defblock name="widget_load_helper">
+        <for i="1" to_="{csl_len(@storegroups_csl)}">
+            <setv name="set_store_{@i}" value="{@store_col.s{@i}}"/>
+        </for>
+        <for i="1" to_="{csl_len(@storegroups_csl)}">
+            <setv name="store_col.s{@i}" value="{@set_store_{@i}}"/>
+        </for>
+        <for i="1" to_="{lst_len(@tactic_selector.name)}">
+            <setv name="set_tactic_name_{@i}" value="{@tactic_selector.name.{@i}}"/>
+            <setv name="set_tactic_label_{@i}" value="{@tactic_selector.label.{@i}}"/>
+        </for>
+        <for i="1" to_="{lst_len(@tactic_selector.name)}">
+            <setv name="tactic_selector.name.{@i}" value="{@set_tactic_name_{@i}}"/>
+            <setv name="tactic_selector.label.{@i}" value="{@set_tactic_label_{@i}}"/>
+        </for>
+        <setv name="set_tactic_selector" value="{@tactic_selector}"/>
+        <setv name="tactic_selector" value="{@set_tactic_selector}"/>
+    </defblock>
+    <defblock name="app_widget">
+        <for i="1" to_="6">
+            <setv name="app_widget_{@i}" value="0"/>
+        </for>
+    </defblock>
+</library>
