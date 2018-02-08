@@ -19,11 +19,11 @@ module.exports = function (grunt) {
     livereload: {
       options: {
         open: {
-          target: 'http://localhost:8000/hello_world.html',
+          target: 'http://localhost:8000/report2.html',
           appName: 'open'
         },
         port: 8000,
-        target: 'http://localhost:8000/hello_world.html',
+        target: 'http://localhost:8000/report2.html',
         middleware: function (connect) {
           return [
             serveStatic(buildConfig["build_dir"]),

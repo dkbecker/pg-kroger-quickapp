@@ -51,8 +51,10 @@ module.exports = {
     id: '<%= login_id %>',
     password: '<%= login_password %>'
   },
-
-  root_path: 'pg.kroger.dev.<%= login.id %>.hello_world',
+    /**
+     * This is where to define the developer default for root path.
+     */
+  root_path: 'pg.kroger.dev.<%= login.id %>',
   basetable: 'default.lonely',
 
   init_queries: {
@@ -67,7 +69,7 @@ module.exports = {
       file_configs: ['quick_queries'],
       folders: [{ // specify folder titles and/or creation of empty folders
         folder: '<%= root_path %>',
-        title: 'Hello World Example App'
+        title: 'PG Kroger'
       }]
     }
   },
@@ -83,9 +85,9 @@ module.exports = {
     // basetable: '', // optional (default is to use the build.config basetable)
 
     overrides: [{
-      file: 'hello_world.xml',  // required - indicates which file to provide overrides for
-      title: 'Hello World Example App',
-      container: '<%= app_dir %>/hello_world.html',   // html iframe container
+      file: 'report2.xml',  // required - indicates which file to provide overrides for
+      title: 'PG Kroger Report 2',
+      container: '<%= app_dir %>/report2.html',   // html iframe container
       ordinal: 99 // deploy last because there are dependencies which must be deployed beforehand
     }, {
       file: 'lib2/lib2.xml',  // required - indicates which file to provide overrides for

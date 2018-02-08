@@ -17,7 +17,7 @@ module.exports = function (grunt) {
       },
 
       html: {
-        files: ['<%= quick_queries.hello_world.container %>'],
+        files: ['<%= quick_queries.report2.container %>'],
         tasks: ['build']
       },
 
