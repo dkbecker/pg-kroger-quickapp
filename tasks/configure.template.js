@@ -12,7 +12,7 @@ module.exports = function (grunt) {
         files: [{
           expand: true,
           flatten: true,
-          src: ['<%= quick_queries.report2.container %>'],
+          src: ['<%= directory.report2.container %>'],
           dest: '<%= build_dir %>'
         }, {
           expand: true,
@@ -43,5 +43,5 @@ module.exports = function (grunt) {
       }
     },
 
-    envConfig.util.get('quick_queries'));
+    envConfig.util.get('directory'));
 };

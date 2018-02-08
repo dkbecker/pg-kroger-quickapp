@@ -11,6 +11,7 @@ module.exports = {
   env_configs: {
     developer: {
       // platform_version: 'primerc'
+        root_path: 'pg.kroger.dev.<%= login.id %>'
     },
     ci: {
       // root_path: 'pub.consumer_data.oi.ecom.ci',
@@ -55,8 +56,12 @@ module.exports = {
      * This is where to define the developer default for root path.
      */
   root_path: 'pg.kroger.dev.<%= login.id %>',
+  root_path_title: 'PG Kroger',
   basetable: 'default.lonely',
 
+    /**
+     * Define titles for folders here (and folder metadata)
+     */
   init_queries: {
     create_folders: {
       table: '<%= basetable %>',
@@ -66,16 +71,18 @@ module.exports = {
       options: {
         args: '-k' // force a new session which ensures folder caches are cleared
       },
-      file_configs: ['quick_queries'],
+      file_configs: ['directory'],
       folders: [{ // specify folder titles and/or creation of empty folders
         folder: '<%= root_path %>',
         title: 'PG Kroger'
       }]
     }
   },
-
-  // auto-managed quick_queries via file patterns
-  quick_queries: [{
+    /**
+     * Custom directory builds can be overriden here. The default is to folder/objects based on folder structure underneath src
+     */
+  // auto-managed directory via file patterns
+  directory: [{
     cwd: '<%= app_dir %>', // any grunt.file.expand settings (see https://gruntjs.com/api/grunt.file)
     src: ['**/*.xml', '!**/*_tree.xml', '!**/*.spec.xml'], // any list of grunt file patterns
     build_dir: '<%= build_dir %>/app',
@@ -84,10 +91,13 @@ module.exports = {
     // root_path: '', // optional (default is to use the build.config root_path)
     // basetable: '', // optional (default is to use the build.config basetable)
 
+      /**
+       * Overrides are object overrides inside the directory (DBM)
+       */
     overrides: [{
       file: 'report2.xml',  // required - indicates which file to provide overrides for
-      title: 'PG Kroger Report 2',
-      container: '<%= app_dir %>/report2.html',   // html iframe container
+      title: 'Report 2',
+      container: '<%= app_dir %>/landing_page.html',   // html iframe container
       ordinal: 99 // deploy last because there are dependencies which must be deployed beforehand
     }, {
       file: 'lib2/lib2.xml',  // required - indicates which file to provide overrides for

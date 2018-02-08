@@ -26,9 +26,9 @@ module.exports = function (grunt) {
     },
 
     // always use the tokenized file, so remap the dest value to src key
-    envConfig.util.get('quick_queries', 'dest', 'src'),
+    envConfig.util.get('directory', 'dest', 'src'),
 
-    // add all of the initialization quick_queries as available tendo tasks
+    // add all of the initialization directory as available tendo tasks
     envConfig.util.transformKeys(envConfig['init_queries'], 'dest', 'src')
   );
 };

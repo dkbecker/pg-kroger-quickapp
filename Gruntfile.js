@@ -43,7 +43,7 @@ module.exports = function (grunt) {
   var envConfig = require('./env.config.js')(grunt);
 
   // build, tokenize and cache platform file auto-managed configurations
-  envConfig.quick_queries = envConfig.util.build("quick_queries", envConfig.quick_queries, envConfig);
+  envConfig.directory = envConfig.util.build("directory", envConfig.directory, envConfig);
 
   grunt.initConfig(
     grunt.util._.extend({
@@ -97,8 +97,8 @@ module.exports = function (grunt) {
     'deploy_all_quick_queries'
   ]);
 
-  // creates a deploy task from all 'quick_queries' defined in build.config.js
-  grunt.registerTask('deploy_all_quick_queries', envConfig.util.buildTendoTasks('quick_queries'));
+  // creates a deploy task from all 'directory' defined in build.config.js
+  grunt.registerTask('deploy_all_quick_queries', envConfig.util.buildTendoTasks('directory'));
 
   // runs tjhe weather query via tendo
   grunt.registerTask('weather', [

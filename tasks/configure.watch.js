@@ -17,7 +17,7 @@ module.exports = function (grunt) {
       },
 
       html: {
-        files: ['<%= quick_queries.report2.container %>'],
+        files: ['<%= directory.report2.container %>'],
         tasks: ['build']
       },
 
@@ -51,8 +51,8 @@ module.exports = function (grunt) {
       }
     },
 
-    // watch all defined quick_queries
-    envConfig.util.buildWatcherTasks('quick_queries', ['template', 'tendo']),
+    // watch all defined directory
+    envConfig.util.buildWatcherTasks('directory', ['template', 'tendo']),
 
     // tdd tasks need to occur after any other watchers to ensure proper order is maintained
     {

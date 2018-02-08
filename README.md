@@ -56,19 +56,19 @@ Before diving into any of the configs lets see some quick examples!:
     grunt serve    
 ```
     
-3. Open a Chrome browser and navigate to the developer dashboard (http://localhost:8000/hello_world.html). 
+3. Open a Chrome browser and navigate to the developer dashboard (http://localhost:8000/landing_page.html). 
 
 4. Click on the "Hello World Example App" button. This will load the quick app into a new tab.
 
 5. Turn on the [LiveReload](https://chrome.google.com/webstore/search/livereload) extension (located in the upper right hand corner of the chrome browser).
 
-6. Now open 'src/app/hello_world.xml' and change 'Hello World' to 'World Hello' and save.  The serve command will detect the file has change, rebuild it, push it up to 1010 and then refresh the browser ([LiveReload.com](https://chrome.google.com/webstore/search/livereload) extension required).   
+6. Now open 'src/app/report2.xml' and change 'Hello World' to 'World Hello' and save.  The serve command will detect the file has change, rebuild it, push it up to 1010 and then refresh the browser ([LiveReload.com](https://chrome.google.com/webstore/search/livereload) extension required).   
    
 ## Auto-managed quick queries:
-Inside of the 'build.config.js' there is a node named 'quick_queries' this is where the auto-managed quick queries are defined.  Each file will automatically have a 'watch', 'tendo' and optionally a 'replace' task created.  
+Inside of the 'build.config.js' there is a node named 'directory' this is where the auto-managed quick queries are defined.  Each file will automatically have a 'watch', 'tendo' and optionally a 'replace' task created.  
 Example:
 ```js
-  quick_queries: [{
+  directory: [{
       cwd: '<%= app_dir %>', // any grunt.file.expand settings (see https://gruntjs.com/api/grunt.file)
       src: ['**/*.xml', '!**/temp_*.xml'], // any list of grunt file patterns
       build_dir: '<%= build_dir %>/app',
@@ -76,15 +76,15 @@ Example:
   }]
 ```
 
-To override settings used for the auto-managed quick_queries add a new object to the overrides array for each file you would like to modify settings for.
+To override settings used for the auto-managed directory add a new object to the overrides array for each file you would like to modify settings for.
 Example:
 ```js
-  quick_queries: [{
+  directory: [{
       cwd: '<%= app_dir %>', // any grunt.file.expand settings (see https://gruntjs.com/api/grunt.file)
       src: ['**/*.xml', '!**/temp_*.xml'], // any list of grunt file patterns
       build_dir: '<%= build_dir %>/app',
       overrides: [{
-          file: 'hello_world.xml',  // required - indicates which file to provide overrides for
+          file: 'report2.xml',  // required - indicates which file to provide overrides for
           title: 'Hello World Example App', // this will set the title in the platform. the default is the name of the file (minus the extension)
       }]
   }]
@@ -92,13 +92,13 @@ Example:
 
 It is possible to reach any of the overrides and generated properties as expressions in templates:
 ```js
-  // the title of the hello_world quick_query specified in the overrides array
-  <%= quick_queries.hello_world.title %>
+  // the title of the report2 quick_query specified in the overrides array
+  <%= directory.report2.title %>
    
   or
   
   // the generated table and with path
-  <%= quick_queries.hello_world._table %> 
+  <%= directory.report2._table %> 
 ```
   
 To manually deploy an individual quick query:
@@ -183,7 +183,7 @@ TODO: move to a separate page and document :-)
 * TODO (see lib2.spec.xml and queries.spec.js for an example)
 
 ##### Creating e2e tests
-* TODO (see hello_world.e2e.js for an example)
+* TODO (see report2.e2e.js for an example)
 
 
 ##### Test Driven Development (TDD)
